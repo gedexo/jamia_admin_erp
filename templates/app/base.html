@@ -62,6 +62,8 @@
                 {% include 'app/sidebar/super_admin.html' %}
             {% elif request.user.usertype == 'director' %}
                 {% include 'app/sidebar/director.html' %}
+            {% elif request.user.usertype == 'OE' %}
+                {% include 'app/sidebar/director.html' %}
             {% elif request.user.usertype == 'College' %}
                 {% include 'app/sidebar/college.html' %}
             {% else %}

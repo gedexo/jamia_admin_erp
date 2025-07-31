@@ -105,7 +105,7 @@
         <div class="detail-item">
           <label class="detail-label">Description</label>
           <div class="detail-value border-top pt-3 mt-2">
-            {{ object.description|safe|linebreaks }}
+            {{ object.description|safe }}
           </div>
         </div>
       </div>
@@ -141,7 +141,22 @@
                       {{ history.status }}
                     </span>
                   </td>
-                  <td>{{ history.remark|safe|default:"-" }}</td>
+                  <td>
+                        {% if history.remark %}
+                            <button type="button"
+                                    class="btn btn-primary btn-sm view-remark-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#remarkModal"
+                                    data-remark-id="remark-{{ forloop.counter }}">
+                                View Remark
+                            </button>
+                            <script type="text/html" id="remark-{{ forloop.counter }}">
+                              {{ history.remark|safe }}
+                            </script>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
                   <td>{{ history.next_usertype|default:"-" }}</td>
                 </tr>
                 {% empty %}
@@ -159,12 +174,28 @@
   </div>
 </div>
 
-{% endblock content %}
 
+<!-- Modal -->
+<div class="modal fade" id="remarkModal" tabindex="-1" aria-labelledby="remarkModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="remarkModalLabel">Remark</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="remarkModalBody">
+        <!-- Remark content will appear here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
 {% block javascript %}
 <script src="https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
+    // === Status Animation ===
     const container = document.getElementById('statusAnimation');
     if (container) {
       const animation = lottie.loadAnimation({
@@ -188,45 +219,116 @@
         {% endif %}
       });
     }
+
+    // === Bootstrap Modal (No manual creation) ===
+    const remarkModalEl = document.getElementById('remarkModal');
+    const remarkModal = new bootstrap.Modal(remarkModalEl);
+
+    document.querySelectorAll('.view-remark-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const remarkId = btn.getAttribute('data-remark-id');
+        const scriptTag = document.getElementById(remarkId);
+        if (scriptTag) {
+          const html = scriptTag.textContent;
+          document.getElementById('remarkModalBody').innerHTML = html;
+          remarkModal.show();
+        }
+      });
+    });
+
+    // Optional: remove leftover backdrops if any from old scripts
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
   });
 </script>
+
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-      const $select = $('#id_next_usertype');
-      const usertype = $select.data('user-usertype');
-  
-      if (!usertype) return;
-  
-      $select.select2();
-  
-      // On open, disable the option that matches usertype
-      $select.on('select2:open', function () {
-          setTimeout(() => {
-              $('#select2-id_next_usertype-results li').each(function () {
-                  const $li = $(this);
-                  const text = $li.text().trim();
-  
-                  if (text.startsWith(usertype) || text.includes(`${usertype} (Assigned)`)) {
-                      $li
-                          .attr('aria-disabled', 'true')
-                          .addClass('select2-results__option--disabled');
-                  }
-              });
-          }, 50);
-      });
-  
-      // Optional: prevent selecting it via keyboard
-      $select.on('select2:selecting', function (e) {
-          if (e.params.args.data.text.startsWith(usertype)) {
-              e.preventDefault();
+    const $select = $('#id_next_usertype');
+    const usertype = $select.data('user-usertype');
+
+    if (!usertype) return;
+
+    $select.select2();
+
+    $select.on('select2:open', function () {
+      setTimeout(() => {
+        $('#select2-id_next_usertype-results li').each(function () {
+          const $li = $(this);
+          const text = $li.text().trim();
+
+          if (text.startsWith(usertype) || text.includes(`${usertype} (Assigned)`)) {
+            $li
+              .attr('aria-disabled', 'true')
+              .addClass('select2-results__option--disabled');
           }
-      });
+        });
+      }, 50);
+    });
+
+    $select.on('select2:selecting', function (e) {
+      if (e.params.args.data.text.startsWith(usertype)) {
+        e.preventDefault();
+      }
+    });
   });
-  </script>
+</script>
 {% endblock %}
 
 {% block extra_css %}
 <style>
+
+  #remarkModal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 1050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #remarkModal .modal-backdrop {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1;
+  }
+  #remarkModal .modal-dialog {
+    position: relative;
+    z-index: 2;
+    margin: 2rem auto;
+  }
+  #remarkModal .modal-content {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    padding: 1.5rem;
+    position: relative;
+  }
+  #remarkModal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 1rem;
+  }
+  #remarkModal .modal-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  #remarkModal .close-modal-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #888;
+    cursor: pointer;
+  }
+  #remarkModal .modal-body {
+    font-size: 0.95rem;
+    color: #333;
+    word-break: break-word;
+  }
+
+  
   /* Base Styles */
   .page-header {
     padding: 1rem 0;

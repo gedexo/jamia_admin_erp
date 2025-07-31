@@ -117,7 +117,7 @@ class RequestSubmissionStatusHistory(BaseModel):
 class Memo(BaseModel):
     title = models.CharField(max_length=180)
     description = HTMLField()
-    college = models.ManyToManyField("users.UserProfile", limit_choices_to={'user__usertype': 'College'}, blank=True, null=True)
+    college = models.ManyToManyField("users.UserProfile", limit_choices_to={'user__usertype': 'College'}, blank=True)
 
     def __str__(self):
         return self.title

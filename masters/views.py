@@ -1,6 +1,8 @@
 import sys
-
+from django.template.loader import render_to_string
 from django import forms
+from weasyprint import HTML, CSS
+from django.templatetags.static import static
 from django.contrib.auth import get_user_model
 from .models import Memo, RequestSubmission, RequestSubmissionStatusHistory, RequestSubmissionType
 from .forms import RequestStatusUpdateForm, RequestSubmissionTypeForm
@@ -344,37 +346,55 @@ class RequestSubmissionDeleteView(mixins.HybridDeleteView):
     model = RequestSubmission
     permissions = ("director", "is_superuser")
 
+def download_request_submission_pdf(request, pk):
+    instance = get_object_or_404(RequestSubmission, pk=pk)
 
-class RequestSubmissionPDFView(PDFView):
-    template_name = 'masters/request_submission/pdf/request_submission_pdf.html'
-    pdfkit_options = {
-        "page-height": 297,
-        "page-width": 210,
-        "encoding": "UTF-8",
-        "margin-top": "0",
-        "margin-bottom": "0",
-        "margin-left": "0",
-        "margin-right": "0",
+    oe_remark_obj = (
+        instance.status_history
+        .filter(usertype="OE", remark__isnull=False)
+        .order_by("-date")
+        .first()
+    )
+    full_text = oe_remark_obj.remark if oe_remark_obj else ""
+
+    # Set word lengths for first and other pages
+    first_page_length = 370
+    other_page_length = 423 
+
+    words = full_text.split()
+    chunks = []
+    if len(words) > first_page_length:
+        chunks.append(' '.join(words[:first_page_length]))
+        for i in range(first_page_length, len(words), other_page_length):
+            chunks.append(' '.join(words[i:i + other_page_length]))
+    else:
+        # All content fits on first page
+        chunks.append(' '.join(words))
+
+    context = {
+        "instance": instance,
+        "chunks": chunks,
+        "request": request,
     }
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        instance = get_object_or_404(RequestSubmission, pk=self.kwargs["pk"])
-        context["title"] = "Request Submission"
-        context["instance"] = instance
+    html_string = render_to_string(
+        'masters/request_submission/pdf/request_submission_pdf.html',
+        context
+    )
+    html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
 
-        oe_remark = (
-            instance.status_history
-            .filter(usertype="OE", remark__isnull=False)
-            .order_by("-date")
-            .first()
-        )
+    pdf_file = html.write_pdf(stylesheets=[
+        CSS(string='''
+            @page {
+                size: A4;
+                margin: 0mm;
+            }
+        ''')
+    ])
 
-        context["oe_remark"] = oe_remark.remark if oe_remark else ""
-        return context
-    
-    def get_filename(self):
-        return "request_submission.pdf"
+    response = HttpResponse(pdf_file, content_type='application/pdf')
+    response['Content-Disposition'] = 'inline; filename="request_submission.pdf"'
+    return response
 
 
 class RequestSubmissionPDFDownloadView(PDFView):

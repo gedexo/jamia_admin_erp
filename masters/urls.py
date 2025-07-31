@@ -12,7 +12,7 @@ urlpatterns = [
     path("request-submission/<str:pk>/update/", views.RequestStatusUpdateView.as_view(), name="request_submission_update"),
     path("request-submission/<str:pk>/delete/", views.RequestSubmissionDeleteView.as_view(), name="request_submission_delete"),
     
-    path("request-submission-pdf/<str:pk>/", views.RequestSubmissionPDFView.as_view(), name="request_submission_pdf"),
+    path("request-submission-pdf/<str:pk>/", views.download_request_submission_pdf, name="request_submission_pdf"),
     path("request-submission-pdf/<str:pk>/download/", views.RequestSubmissionPDFDownloadView.as_view(), name="request_submission_pdf_download"),
 
     # Request Submission Type
