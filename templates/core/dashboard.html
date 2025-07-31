@@ -1,0 +1,53 @@
+{% extends 'app/base.html' %}
+{% load static i18n crispy_forms_tags django_tables2 extras %}
+{% block title %}Home: {{app_settings.site_title}}{% endblock %}
+
+{% block content %}
+
+<!-- Start::app-content -->
+<div class="main-content app-content">
+    <div class="container-fluid">
+
+       <!-- Page Header -->
+       <div class="page-header d-lg-flex d-block">
+            <div class="page-leftheader">
+                <div class="page-title">Dashboard</div>
+            </div>
+
+        </div>
+        <!-- Page Header Close -->
+    
+        <div class="row">
+            {% include 'app/partials/messages.html' %}
+        </div>
+   
+        {% if request.user.is_superuser %}
+            {% include "app/dashboard/superuser_dashboard.html" %}
+        {% elif request.user.usertype == "director" %}
+            {% include "app/dashboard/superuser_dashboard.html" %}
+        {% elif request.user.usertype == "OE" %}
+            {% include "app/dashboard/oe_dashboard.html" %}
+        {% elif request.user.usertype == "CRO" %}
+            {% include "app/dashboard/user_dashboard.html" %}
+        {% elif request.user.usertype == "PRO" %}
+            {% include "app/dashboard/user_dashboard.html" %}
+        {% elif request.user.usertype == "CAO" %}
+            {% include "app/dashboard/user_dashboard.html" %}
+        {% elif request.user.usertype == "AC" %}
+            {% include "app/dashboard/user_dashboard.html" %}
+        {% elif request.user.usertype == "AA" %}
+            {% include "app/dashboard/user_dashboard.html" %}
+        {% elif request.user.usertype == "FO" %}
+            {% include "app/dashboard/user_dashboard.html" %}
+        {% elif request.user.usertype == "College" %}
+            {% include "app/dashboard/college_dashboard.html" %}
+        {% else %}
+            {% include "app/dashboard/user_dashboard.html" %}
+        {% endif %}
+
+   
+
+    </div>
+</div>
+<!-- End::app-content -->
+ {% endblock %}

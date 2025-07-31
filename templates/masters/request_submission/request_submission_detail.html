@@ -1,0 +1,457 @@
+{% extends 'app/base.html' %}
+{% load static i18n crispy_forms_tags %}
+{% block title %}{{ object }}: {{ app_settings.site_title }}{% endblock %}
+
+{% block content %}
+
+<div class="main-content app-content">
+  <div class="container-fluid">
+
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+      <h1 class="page-title text-truncate">{{ title|title }}</h1>
+      <div class="btn-group" style="gap: 0.25rem;">
+        <a class="btn btn-icon p-0 border-0 bg-transparent shadow-none minimal-action-btn"
+           href="{% url 'masters:request_submission_pdf_download' object.pk %}"
+           target="_blank"
+           title="Print (PDF)">
+          <i class="fe fe-printer fs-20"></i>
+        </a>
+        
+        {% if request.user.usertype != "College" and latest_next_usertype == request.user.usertype and request.user.id not in latest_submitted_user_ids %}
+          <a class="btn btn-icon p-0 border-0 bg-transparent shadow-none minimal-action-btn" href="{{ object.get_update_url }}" title="Edit">
+            <i class="fe fe-edit fs-20"></i>
+          </a>
+        {% endif %}
+        
+        {% if request.user.is_superuser or request.user.usertype == "director" or request.user.usertype == "OE"  %}
+          <a class="btn btn-icon p-0 border-0 bg-transparent shadow-none text-danger minimal-action-btn" href="{{ object.get_delete_url }}" title="Delete">
+            <i class="fe fe-trash-2 fs-20"></i>
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Status Card Section -->
+    {% if request.user.usertype == "College" %}
+      <div class="status-section mb-5">
+        <div class="status-container">
+          <div class="status-icon">
+            <div id="statusAnimation" class="animation-container"></div>
+          </div>
+          <div class="status-content">
+            <h2 class="status-title">
+              {% if object.status == 'approved' %}
+                Request Approved
+              {% elif object.status == 'rejected' %}
+                Request Rejected
+              {% else %}
+                Request Under Review
+              {% endif %}
+            </h2>
+            <p class="status-subtitle">
+              {% if object.status == 'approved' %}
+                Your submission has been approved.
+              {% elif object.status == 'rejected' %}
+                Your submission has been rejected.
+              {% else %}
+                Your submission is currently under review and being processed.
+              {% endif %}
+            </p>
+            {% if object.status == 'approved' or object.status == 'rejected' %}
+              <div class="status-actions">
+                <a href="{% url 'masters:request_submission_pdf' object.pk %}" target="_blank" class="pdf-view-btn">
+                  <i class="fe fe-file-text"></i>
+                  <span>View PDF</span>
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Content Card Section -->
+    <div class="card content-card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="detail-item mb-3">
+              <label class="detail-label">Title</label>
+              <div class="detail-value">{{ object.title }}</div>
+            </div>
+            <div class="detail-item mb-3">
+              <label class="detail-label">Submitted By</label>
+              <div class="detail-value">{{ object.college.user.get_full_name|default:object.college }}</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="detail-item mb-3">
+              <label class="detail-label">Created At</label>
+              <div class="detail-value">{{ object.created|date:"d M Y, h:i A" }}</div>
+            </div>
+            <div class="detail-item mb-3">
+              <label class="detail-label">Attachment</label>
+              <div class="detail-value">
+                {% if object.attachment %}
+                  <a href="{{ object.attachment.url }}" target="_blank" class="text-primary">Download File</a>
+                {% else %}
+                  <span class="text-muted">No attachment</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="detail-item">
+          <label class="detail-label">Description</label>
+          <div class="detail-value border-top pt-3 mt-2">
+            {{ object.description|safe|linebreaks }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status History Table Section -->
+    {% if not request.user.usertype == "College" %}
+      <div class="card table-card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-bottom">
+          <h5 class="mb-0">Status History</h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="bg-light">
+                <tr>
+                  <th>Date</th>
+                  <th>User</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Remark</th>
+                  <th>Assigned To</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for history in status_history %}
+                <tr>
+                  <td>{{ history.date|date:"d M Y, h:i A" }}</td>
+                  <td>{{ history.user|default:"-" }}</td>
+                  <td>{{ history.usertype }}</td>
+                  <td>
+                    <span class="badge bg-{% if history.status == 'approved' %}success{% elif history.status == 'rejected' %}danger{% else %}info{% endif %}-light">
+                      {{ history.status }}
+                    </span>
+                  </td>
+                  <td>{{ history.remark|safe|default:"-" }}</td>
+                  <td>{{ history.next_usertype|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">No history available</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock content %}
+
+{% block javascript %}
+<script src="https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const container = document.getElementById('statusAnimation');
+    if (container) {
+      const animation = lottie.loadAnimation({
+        container: container,
+        renderer: 'svg',
+        loop: {% if object.status == 'approved' or object.status == 'rejected' %}false{% else %}true{% endif %},
+        autoplay: true,
+        path: "{% if object.status == 'approved' %}{% static 'app/assets/animation/success.json' %}{% elif object.status == 'rejected' %}{% static 'app/assets/animation/rejection.json' %}{% else %}{% static 'app/assets/animation/timing.json' %}{% endif %}"
+      });
+
+      container.style.width = '100%';
+      container.style.height = '100%';
+
+      animation.addEventListener('data_failed', function () {
+        {% if object.status == "approved" %}
+          container.innerHTML = '<i class="fe fe-check-circle animation-fallback"></i>';
+        {% elif object.status == "rejected" %}
+          container.innerHTML = '<i class="fe fe-x-circle animation-fallback"></i>';
+        {% else %}
+          container.innerHTML = '<i class="fe fe-clock animation-fallback"></i>';
+        {% endif %}
+      });
+    }
+  });
+</script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+      const $select = $('#id_next_usertype');
+      const usertype = $select.data('user-usertype');
+  
+      if (!usertype) return;
+  
+      $select.select2();
+  
+      // On open, disable the option that matches usertype
+      $select.on('select2:open', function () {
+          setTimeout(() => {
+              $('#select2-id_next_usertype-results li').each(function () {
+                  const $li = $(this);
+                  const text = $li.text().trim();
+  
+                  if (text.startsWith(usertype) || text.includes(`${usertype} (Assigned)`)) {
+                      $li
+                          .attr('aria-disabled', 'true')
+                          .addClass('select2-results__option--disabled');
+                  }
+              });
+          }, 50);
+      });
+  
+      // Optional: prevent selecting it via keyboard
+      $select.on('select2:selecting', function (e) {
+          if (e.params.args.data.text.startsWith(usertype)) {
+              e.preventDefault();
+          }
+      });
+  });
+  </script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Base Styles */
+  .page-header {
+    padding: 1rem 0;
+    border-bottom: none;
+  }
+  
+  .page-title {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 1.5rem;
+  }
+  
+  .btn-icon {
+    background: transparent;
+    border: none;
+    color: #718096;
+    padding: 0.375rem;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .btn-icon:hover {
+    background: #f7fafc;
+    color: #4a5568;
+  }
+
+  /* Status Section */
+  .status-section {
+    background: linear-gradient(135deg, {% if object.status == "approved" %}#f0fdf4{% elif object.status == "rejected" %}#fef2f2{% else %}#eff6ff{% endif %} 0%, {% if object.status == "approved" %}#ecfdf5{% elif object.status == "rejected" %}#fef7f7{% else %}#dbeafe{% endif %} 100%);
+    border-radius: 16px;
+    padding: 2rem;
+    border: 1px solid {% if object.status == "approved" %}#dcfce7{% elif object.status == "rejected" %}#fecaca{% else %}#bfdbfe{% endif %};
+  }
+  
+  .status-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+  
+  .status-icon {
+    flex-shrink: 0;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: {% if object.status == "approved" %}#10b981{% elif object.status == "rejected" %}#ef4444{% else %}#3b82f6{% endif %};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px {% if object.status == "approved" %}rgba(16, 185, 129, 0.25){% elif object.status == "rejected" %}rgba(239, 68, 68, 0.25){% else %}rgba(59, 130, 246, 0.25){% endif %};
+  }
+  
+  .animation-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .animation-fallback {
+    font-size: 28px;
+    color: white;
+  }
+  
+  .status-content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .status-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: {% if object.status == "approved" %}#065f46{% elif object.status == "rejected" %}#991b1b{% else %}#1e40af{% endif %};
+    margin: 0 0 0.5rem 0;
+    line-height: 1.3;
+  }
+  
+  .status-subtitle {
+    font-size: 0.9375rem;
+    color: {% if object.status == "approved" %}#047857{% elif object.status == "rejected" %}#dc2626{% else %}#2563eb{% endif %};
+    margin: 0 0 1rem 0;
+    line-height: 1.5;
+    opacity: 0.9;
+  }
+  
+  .status-remark {
+    background: white;
+    border: 1px solid {% if object.status == "approved" %}#bbf7d0{% elif object.status == "rejected" %}#fca5a5{% else %}#93c5fd{% endif %};
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 0.875rem;
+    color: {% if object.status == "approved" %}#065f46{% elif object.status == "rejected" %}#991b1b{% else %}#1e40af{% endif %};
+    line-height: 1.5;
+  }
+  
+  /* Status Actions */
+  .status-actions {
+    margin-top: 1rem;
+  }
+  
+  .pdf-view-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    background: white;
+    border: 1px solid {% if object.status == "approved" %}#10b981{% elif object.status == "rejected" %}#ef4444{% else %}#3b82f6{% endif %};
+    border-radius: 8px;
+    color: {% if object.status == "approved" %}#10b981{% elif object.status == "rejected" %}#ef4444{% else %}#3b82f6{% endif %};
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .pdf-view-btn:hover {
+    background: {% if object.status == "approved" %}#10b981{% elif object.status == "rejected" %}#ef4444{% else %}#3b82f6{% endif %};
+    color: white;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px {% if object.status == "approved" %}rgba(16, 185, 129, 0.3){% elif object.status == "rejected" %}rgba(239, 68, 68, 0.3){% else %}rgba(59, 130, 246, 0.3){% endif %};
+  }
+  
+  .pdf-view-btn i {
+    font-size: 1rem;
+  }
+
+  /* Content Card */
+  .detail-item {
+    margin-bottom: 1.25rem;
+  }
+  
+  .detail-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+  }
+  
+  .detail-value {
+    font-size: 0.9375rem;
+    color: #1e293b;
+    line-height: 1.5;
+  }
+
+  /* Table Card */
+  .table-card {
+    margin-top: 2rem;
+  }
+  
+  table {
+    font-size: 0.875rem;
+  }
+  
+  table thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: #64748b;
+  }
+  
+  .badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    .status-section {
+      padding: 1.5rem;
+    }
+    
+    .status-container {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 1rem;
+    }
+    
+    .status-icon {
+      width: 56px;
+      height: 56px;
+    }
+    
+    .animation-fallback {
+      font-size: 24px;
+    }
+    
+    .status-title {
+      font-size: 1.25rem;
+    }
+    
+    .pdf-view-btn {
+      padding: 0.5rem 0.875rem;
+      font-size: 0.8125rem;
+    }
+    
+    .pdf-view-btn i {
+      font-size: 0.875rem;
+    }
+    
+    .content-card .row > div {
+      width: 100%;
+    }
+  }
+
+  .minimal-action-btn i {
+        transition: color 0.2s, transform 0.2s;
+      }
+      .minimal-action-btn:hover i {
+        color: #0d6efd;
+        transform: scale(1.15);
+      }
+      .minimal-action-btn.text-danger:hover i {
+        color: #dc3545;
+      }
+</style>
+
+{% endblock %}

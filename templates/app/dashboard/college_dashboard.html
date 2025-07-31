@@ -1,0 +1,361 @@
+{% load static %}
+
+<!-- Start::row-1 -->
+<div class="row">
+    <div class="col-xxl-12 col-md-12 col-lg-12">
+        
+        <!-- Welcome Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card custom-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <span class="avatar avatar-lg bg-custom-gradient rounded-circle shadow-gradient">
+                                    <i class="fe fe-user fs-16 text-white"></i>
+                                </span>
+                            </div>
+                            <div>
+                                <h4 class="mb-1 text-gradient">Welcome back, {{ request.user.get_full_name|default:request.user.email }}!</h4>
+                                <p class="mb-0 text-muted">Here's your personal dashboard overview.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Only show Approved/Rejected Requests cards -->
+        <div class="row">
+            <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
+                <div class="card custom-card">
+                    <a href="{% url 'masters:request_submission_list' %}?status=approved">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <span class="avatar avatar-lg bg-success-transparent rounded-circle">
+                                        <i class="fe fe-check-circle fs-16 text-success"></i>
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h4 class="mb-1 fw-semibold">{{ approved_count|default:0 }}</h4>
+                                    <p class="mb-0 text-muted">Approved Count</p>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-success-transparent">Approved</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
+                <div class="card custom-card">
+                    <a href="{% url 'masters:request_submission_list' %}?status=rejected">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <span class="avatar avatar-lg bg-danger-transparent rounded-circle">
+                                        <i class="fe fe-x-circle fs-16 text-danger"></i>
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h4 class="mb-1 fw-semibold">{{ rejected_count|default:0 }}</h4>
+                                    <p class="mb-0 text-muted">Rejected Count</p>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-danger-transparent">Rejected</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
+                <div class="card custom-card">
+                    <a href="{% url 'masters:request_submission_list' %}?status=pending">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <span class="avatar avatar-lg bg-warning-transparent rounded-circle">
+                                        <i class="fe fe-clock fs-16 text-warning"></i>
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h4 class="mb-1 fw-semibold">{{ pending_count|default:0 }}</h4>
+                                    <p class="mb-0 text-muted">Pending Count</p>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-warning-transparent">Pending</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assigned Requests Table -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card custom-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Assigned Requests</h3>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Title</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for request in recent_assigned_requests %}
+                                    <tr>
+                                        <td>{{forloop.counter}}</th>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <span class="avatar avatar-sm bg-light rounded-circle me-2">
+                                                    <i class="fe fe-file-text fs-12"></i>
+                                                </span>
+                                                <div>
+                                                    <h6 class="mb-0 fs-14">{{ request.title|truncatechars:30 }}</h6>
+                                                    <small class="text-muted">{{ request.description|safe|truncatechars:50 }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if request.status == 'approved' %}
+                                                <span class="badge bg-success-transparent">Approved</span>
+                                            {% elif request.status == 'rejected' %}
+                                                <span class="badge bg-danger-transparent">Rejected</span>
+                                            {% else %}
+                                                <span class="badge bg-warning-transparent">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ request.created|date:"M d, Y" }}</small>
+                                        </td>
+                                        <td>
+                                            <a href="{{ request.get_absolute_url }}" class="btn btn-sm btn-outline-primary">View</a>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            <div class="text-center">
+                                                <i class="fe fe-file-text fs-48 text-muted mb-3"></i>
+                                                <h6>No assigned requests</h6>
+                                                <p class="text-muted">You have no requests assigned to you.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Assigned Requests Table -->
+        
+        <!-- Request Submission Report Chart (Doughnut) -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card custom-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Request Submission Report</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="directorReportChart" height="180"></canvas>
+                        <div class="mt-3 d-flex justify-content-center gap-4">
+                            <div class="d-flex align-items-center gap-2">
+                                <span style="display:inline-block;width:16px;height:16px;background:#10b981;border-radius:50%"></span>
+                                <span>Approved</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span style="display:inline-block;width:16px;height:16px;background:#ef4444;border-radius:50%"></span>
+                                <span>Rejected</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span style="display:inline-block;width:16px;height:16px;background:#ffc107;border-radius:50%"></span>
+                                <span>Pending</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- My Recent Activity -->
+        <div class="row">
+            <!--My Request Status History-->
+            <div class="col-xl-8 col-lg-8 col-md-12">
+                <div class="card custom-card">
+                    <div class="card-header">
+                        <h3 class="card-title">My Request Status History</h3>
+                        <div class="card-options">
+                            <a href="{% url 'masters:request_submission_list' %}" class="btn btn-sm btn-primary gradient-hover">View All</a>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Request</th>
+                                        <th>Status</th>
+                                        <th>User Type</th>
+                                        <th>Date</th>
+                                        <th>Remark</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for change in recent_status_changes %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <span class="avatar avatar-sm bg-light rounded-circle me-2">
+                                                    <i class="fe fe-file-text fs-12"></i>
+                                                </span>
+                                                <div>
+                                                    <h6 class="mb-0 fs-14">{{ change.submission.title|truncatechars:30 }}</h6>
+                                                    <small class="text-muted">{{ change.usertype }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if change.status == 'approved' %}
+                                                <span class="badge bg-success-transparent">Approved</span>
+                                            {% elif change.status == 'rejected' %}
+                                                <span class="badge bg-danger-transparent">Rejected</span>
+                                            {% else %}
+                                                <span class="badge bg-warning-transparent">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info-transparent">{{ change.usertype }}</span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ change.date|date:"M d, Y H:i" }}</small>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ change.remark|safe|truncatechars:50|default:"-" }}</small>
+                                        </td>
+                                        
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">No status changes yet</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Profile Summary -->
+            <div class="col-xl-4 col-lg-4 col-md-12">
+                <div class="card custom-card">
+                    <div class="card-header">
+                        <h3 class="card-title">My Profile Summary</h3>
+                    </div>
+                    <div class="card-body">
+                        {% for profile in recent_users %}
+                        <div class="text-center mb-4">
+                            {% if profile.photo %}
+                                <img src="{{ profile.photo.url }}" class="avatar avatar-xl rounded-circle mb-3" alt="Profile Photo">
+                            {% else %}
+                                <span class="avatar avatar-xl bg-custom-gradient rounded-circle mb-3 shadow-gradient">
+                                    <i class="fe fe-user fs-24 text-white"></i>
+                                </span>
+                            {% endif %}
+                            <h5 class="mb-1">{{ profile.fullname }}</h5>
+                            <p class="text-muted mb-3">{{ profile.email|default:"No email" }}</p>
+                        </div>
+                        
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="d-flex align-items-center p-3 bg-light rounded">
+                                    <span class="avatar avatar-sm bg-custom-gradient rounded-circle me-3 shadow-gradient">
+                                        <i class="fe fe-phone fs-12 text-white"></i>
+                                    </span>
+                                    <div>
+                                        <small class="text-muted d-block">Phone</small>
+                                        <span class="fw-semibold">{{ profile.mobile|default:"Not provided" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-6">
+                                <div class="d-flex align-items-center p-3 bg-light rounded">
+                                    <span class="avatar avatar-sm bg-success-transparent rounded-circle me-3">
+                                        <i class="fe fe-message-circle fs-12"></i>
+                                    </span>
+                                    <div>
+                                        <small class="text-muted d-block">WhatsApp</small>
+                                        <span class="fw-semibold">{{ profile.whatsapp|default:"Not provided" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4">
+                            <span class="avatar avatar-lg bg-light rounded-circle mb-3">
+                                <i class="fe fe-user fs-32 text-muted"></i>
+                            </span>
+                            <h6 class="mb-2">No profile found</h6>
+                            <p class="text-muted mb-0">Complete your profile to get started</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div> 
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var ctx = document.getElementById('directorReportChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: [
+                {% for status in status_distribution %}'{{ status.current_status|title }}'{% if not forloop.last %}, {% endif %}{% endfor %}
+            ],
+            datasets: [{
+                data: [
+                    {% for status in status_distribution %}{{ status.count }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                ],
+                backgroundColor: [
+                    {% for status in status_distribution %}
+                        {% if status.current_status == 'approved' %}'#10b981'{% elif status.current_status == 'rejected' %}'#ef4444'{% else %}'#ffc107'{% endif %}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

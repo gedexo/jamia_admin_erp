@@ -1,0 +1,290 @@
+/* Custom Gradient Color Scheme */
+:root {
+  /* Override primary colors with custom gradient colors */
+  --primary-rgb: 102, 126, 234; /* #667eea */
+  --primary-color: #667eea;
+  --primary-border: #667eea;
+  --primary01: rgba(102, 126, 234, 0.1);
+  --primary02: rgba(102, 126, 234, 0.2);
+  --primary03: rgba(102, 126, 234, 0.3);
+  --primary04: rgba(102, 126, 234, 0.4);
+  --primary05: rgba(102, 126, 234, 0.5);
+  --primary06: rgba(102, 126, 234, 0.6);
+  --primary07: rgba(102, 126, 234, 0.7);
+  --primary08: rgba(102, 126, 234, 0.8);
+  --primary09: rgba(102, 126, 234, 0.9);
+  --primary005: rgba(102, 126, 234, 0.05);
+  
+  /* Secondary gradient color */
+  --secondary-gradient-color: #764ba2;
+  
+  /* Custom gradient */
+  --custom-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --custom-gradient-reverse: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+/* Override Bootstrap primary color */
+.btn-primary {
+  background: var(--custom-gradient) !important;
+  border: none !important;
+  color: white !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background: var(--custom-gradient-reverse) !important;
+  border: none !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-outline-primary {
+  background: transparent !important;
+  border: 2px solid var(--primary-color) !important;
+  color: var(--primary-color) !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus,
+.btn-outline-primary:active {
+  background: var(--custom-gradient) !important;
+  border: 2px solid transparent !important;
+  color: white !important;
+}
+
+/* Custom gradient backgrounds */
+.bg-custom-gradient {
+  background: var(--custom-gradient) !important;
+  color: white !important;
+}
+
+.bg-custom-gradient-reverse {
+  background: var(--custom-gradient-reverse) !important;
+  color: white !important;
+}
+
+/* Override primary transparent backgrounds */
+.bg-primary-transparent {
+  background-color: var(--primary01) !important;
+  color: var(--primary-color) !important;
+}
+
+.bg-primary-transparent:hover {
+  background-color: var(--primary02) !important;
+  color: var(--primary-color) !important;
+}
+
+/* Override text colors */
+.text-primary {
+  color: var(--primary-color) !important;
+}
+
+/* Override border colors */
+.border-primary {
+  border-color: var(--primary-color) !important;
+}
+
+/* Override badge colors */
+.badge.bg-primary {
+  background: var(--custom-gradient) !important;
+  color: white !important;
+}
+
+.badge.bg-primary-transparent {
+  background-color: var(--primary01) !important;
+  color: var(--primary-color) !important;
+}
+
+/* Override alert colors */
+.alert-primary {
+  background-color: var(--primary01);
+  color: var(--primary-color);
+  border-color: var(--primary01);
+}
+
+.alert-primary .alert-link {
+  color: var(--primary-color);
+}
+
+.alert-primary .btn-close {
+  color: var(--primary-color);
+}
+
+/* Override navbar primary */
+.navbar-primary {
+  background: var(--custom-gradient) !important;
+  color: white !important;
+}
+
+/* Override accordion primary */
+.accordion.accordion-primary .accordion-button {
+  background-color: var(--primary01);
+  color: var(--primary-color);
+}
+
+.accordion.accordion-primary .accordion-button:after {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.accordion.accordion-solid-primary .accordion-button {
+  background: var(--custom-gradient);
+  color: white;
+}
+
+.accordion.accordion-solid-primary .accordion-button:after {
+  background-color: white;
+  color: var(--primary-color);
+}
+
+/* Override progress bars */
+.progress-bar.bg-primary {
+  background: var(--custom-gradient) !important;
+}
+
+/* Override form elements */
+.form-control:focus {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25) !important;
+}
+
+.form-check-input:checked {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+}
+
+/* Override link colors */
+a {
+  color: var(--primary-color);
+}
+
+a:hover {
+  color: var(--secondary-gradient-color);
+}
+
+/* Override card headers with gradient */
+.card-header.bg-primary {
+  background: var(--custom-gradient) !important;
+  color: white !important;
+}
+
+/* Override table headers */
+.table-primary {
+  background-color: var(--primary01) !important;
+  color: var(--primary-color) !important;
+}
+
+/* Override list group items */
+.list-group-item-primary {
+  background-color: var(--primary01) !important;
+  color: var(--primary-color) !important;
+}
+
+/* Override dropdown items */
+.dropdown-item.active,
+.dropdown-item:active {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+}
+
+/* Override pagination */
+.page-item.active .page-link {
+  background: var(--custom-gradient) !important;
+  border-color: var(--primary-color) !important;
+  color: white !important;
+}
+
+.page-link {
+  color: var(--primary-color) !important;
+}
+
+.page-link:hover {
+  color: var(--secondary-gradient-color) !important;
+}
+
+/* Override modal headers */
+.modal-header.bg-primary {
+  background: var(--custom-gradient) !important;
+  color: white !important;
+}
+
+/* Override tooltips */
+.tooltip-inner {
+  background-color: var(--primary-color) !important;
+}
+
+.bs-tooltip-top .tooltip-arrow::before {
+  border-top-color: var(--primary-color) !important;
+}
+
+/* Override popovers */
+.popover-header {
+  background-color: var(--primary01) !important;
+  color: var(--primary-color) !important;
+}
+
+/* Custom gradient text */
+.text-gradient {
+  background: var(--custom-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Custom gradient borders */
+.border-gradient {
+  border: 2px solid;
+  border-image: var(--custom-gradient) 1;
+}
+
+/* Override avatar backgrounds */
+.avatar.bg-primary {
+  background: var(--custom-gradient) !important;
+  color: white !important;
+}
+
+/* Override icon colors */
+.fe.text-primary,
+.fa.text-primary,
+.fas.text-primary,
+.far.text-primary,
+.fab.text-primary {
+  color: var(--primary-color) !important;
+}
+
+/* Override chart colors in JavaScript */
+.chart-primary {
+  background: var(--custom-gradient) !important;
+}
+
+/* Override any remaining Bootstrap primary references */
+.bg-primary {
+  background: var(--custom-gradient) !important;
+  color: white !important;
+}
+
+/* Custom gradient shadows */
+.shadow-gradient {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
+}
+
+/* Hover effects for gradient elements */
+.gradient-hover:hover {
+  background: var(--custom-gradient-reverse) !important;
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+/* Override any SCSS variables that might be used */
+.primary-gradient {
+  background: var(--custom-gradient) !important;
+}
+
+.primary-gradient-text {
+  background: var(--custom-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+} 

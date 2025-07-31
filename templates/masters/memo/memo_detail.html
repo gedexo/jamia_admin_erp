@@ -1,0 +1,169 @@
+{% extends 'app/base.html' %}
+{% load static i18n crispy_forms_tags %}
+{% block title %}{{object}}: {{app_settings.site_title}}{% endblock %}
+
+{% block content %}
+
+<div class="main-content app-content">
+  <div class="container-fluid">
+
+    <!-- Page Header -->
+    <div class="page-header d-flex d-block justify-content-between mb-4">
+      <div class="page-leftheader">
+        <div class="page-title">{{ title|title }}</div>
+      </div>
+      <div class="page-rightheader">
+        <div class="btn-list">
+          <a class="btn btn-light3" href="javascript:void(0);" onclick="window.print();" data-bs-placement="top"
+            data-bs-toggle="tooltip" title="Print"> <i class="fe fe-printer"></i> </a>
+          {% if not request.user.usertype == "College" %}
+          <a class="btn btn-light3" href="{{ object.get_update_url }}"  data-bs-placement="top"
+            data-bs-toggle="tooltip" title="Edit"> <i class="fe fe-edit"></i> </a>
+          <a class="btn btn-light3" href="{{ object.get_delete_url }}"  data-bs-placement="top"
+            data-bs-toggle="tooltip" title="Delete"> <i class="mdi mdi-delete"></i> </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if object %}
+    <!-- Memo Details Table -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-0 pb-0">
+            <h4 class="mb-0 text-dark fw-semibold">{{object}}</h4>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-borderless mb-0">
+                <tbody>
+                  {% for name, value in object.get_fields|slice:"5:" %}
+                  {% if value %}
+                  <tr class="border-bottom">
+                    <td class="py-3 px-4 fw-semibold text-muted" style="width: 200px; min-width: 200px;">{{name}}</td>
+                    <td class="py-3 px-4">{{ value }}</td>
+                  </tr>
+                  {% endif %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if not request.user.usertype == "College" %}
+    <!-- Assigned Colleges Table -->
+    <div class="row mt-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-0 pb-0">
+            <h5 class="mb-0 text-dark fw-semibold">
+              <i class="fe fe-building me-2 text-primary mb-3"></i>
+              Assigned Colleges
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            {% if object.college.all %}
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="bg-light">
+                  <tr>
+                    <th class="border-0 py-3 px-4 fw-semibold text-muted">College Name</th>
+                    <th class="border-0 py-3 px-4 fw-semibold text-muted">Email</th>
+                    <th class="border-0 py-3 px-4 fw-semibold text-muted">Mobile</th>
+                    <th class="border-0 py-3 px-4 fw-semibold text-muted">Profile ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for college in object.college.all %}
+                  <tr class="border-bottom">
+                    <td class="py-3 px-4">
+                      <div class="d-flex align-items-center">
+                        <div class="avatar avatar-sm bg-primary rounded-circle me-3 d-flex align-items-center justify-content-center">
+                          <span class="text-white fw-semibold">{{ college.fullname|slice:":2"|upper }}</span>
+                        </div>
+                        <div>
+                          <div class="fw-semibold text-dark">{{ college.fullname }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="py-3 px-4">
+                      {% if college.email %}
+                        <a href="mailto:{{ college.email }}" class="text-decoration-none">
+                          <i class="fe fe-mail me-1 text-muted"></i>
+                          {{ college.email }}
+                        </a>
+                      {% else %}
+                        <span class="text-muted">-</span>
+                      {% endif %}
+                    </td>
+                    <td class="py-3 px-4">
+                      {% if college.mobile %}
+                        <a href="tel:{{ college.mobile }}" class="text-decoration-none">
+                          <i class="fe fe-phone me-1 text-muted"></i>
+                          {{ college.mobile }}
+                        </a>
+                      {% else %}
+                        <span class="text-muted">-</span>
+                      {% endif %}
+                    </td>
+                    <td class="py-3 px-4">
+                      {% if college.profile_id %}
+                        <span class="badge bg-light text-dark">{{ college.profile_id }}</span>
+                      {% else %}
+                        <span class="text-muted">-</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+              <div class="mb-3">
+                <i class="fe fe-building text-muted" style="font-size: 3rem;"></i>
+              </div>
+              <h6 class="text-muted mb-0">No colleges assigned to this memo</h6>
+              <small class="text-muted">Colleges can be assigned when editing the memo</small>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="row">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body text-center py-5">
+            <i class="fe fe-alert-circle text-muted mb-3" style="font-size: 3rem;"></i>
+            <h6 class="text-muted mb-0">No memo found</h6>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<style>
+.avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+.table > :not(caption) > * > * {
+  border-bottom-width: 1px;
+}
+.table-hover > tbody > tr:hover {
+  background-color: rgba(0,0,0,.02);
+}
+</style>
+
+{% endblock content %}

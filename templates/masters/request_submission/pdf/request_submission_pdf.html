@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Request Submission PDF</title>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body{
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            padding: 0px !important;
+            margin: 0px !important;
+        }
+
+        .request-from-card{
+            background-image: url("{% static 'app/assets/pdf/request.png'%}"); 
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-position: center;
+        }
+        
+        *{
+            padding: 0;
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+        }
+      
+        .card {
+			height: 1400px;
+            max-width: 100%;
+            min-height: 100%;
+            position: relative;
+        }
+        h1,h2,h3,h4,h5,h6{
+            margin-bottom: 20px;
+        }
+       
+        .content{
+            position: relative;
+            top: 20%;
+            font-size: 18px;
+            font-family: 'Poppins', sans-serif;
+            text-align: justify;
+            display: flex;
+            justify-content: center !important;
+            align-items: center !important;
+            text-align: justify !important;
+            flex-direction: column !important;
+            margin: 50px;
+        }
+        
+    </style>
+</head>
+
+<body>
+    <div class="request-from-card">
+        <div class="card">
+            <div class="content" style="top: 22%;">{{oe_remark|safe}}</div> 
+        </div>
+    </div>
+</body>
+
+</html>

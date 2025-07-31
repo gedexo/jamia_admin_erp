@@ -1,0 +1,328 @@
+{% extends 'app/base.html' %}
+{% load static i18n crispy_forms_tags %}
+{% block title %}{{title}}: {{app_settings.site_title}}{% endblock %}
+
+{% block content %}
+
+<div class="main-content app-content">
+    <div class="container-fluid">
+
+        <!-- Page Header -->
+        <div class="page-header d-flex d-block justify-content-between">
+            <div class="page-leftheader">
+                <div class="page-title">{{ title|title }}</div>
+            </div>
+            <div class="page-rightheader">
+                
+            </div>
+        </div>
+        <!-- Page Header Close -->
+
+        <!-- Start::row-1 -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card custom-card">
+                    <div class="card-header d-flex justify-content-between border-bottom-0">
+                        <div class="card-title">{{ sub_title|title }}</div>
+                        <div class="btn-list">
+                            {% if object %}
+                                <a href="{{ object.get_delete_url }}" class="btn btn-light3" data-bs-placement="top"
+                                data-bs-toggle="tooltip" title="Delete"> <i class="mdi mdi-delete"></i> </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12">
+                              <form method="post" id="request-form" enctype="multipart/form-data" autocomplete="off">
+                                {% csrf_token %}
+                                {% if form.non_field_errors %}
+                                  <div class="alert alert-danger">
+                                    {{ form.non_field_errors }}
+                                  </div>
+                                {% endif %}
+                                <div class="row">
+                                    {% comment %} {{ form|crispy }} {% endcomment %}
+                                    {% if not object %}
+                                        <div class="mb-3 col-lg-4 col-sm-12 col-md-6">
+                                            {{ form.title|as_crispy_field }}
+                                        </div>
+                                        
+                                        <div class="mb-3 col-lg-4 col-sm-12 col-md-6">
+                                            {{ form.description|as_crispy_field }}
+                                        </div>
+                                        
+                                        <div class="mb-3 col-lg-4 col-sm-12 col-md-6">
+                                            {{ form.attachment|as_crispy_field }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="row">
+                                    {% if form.status %}
+                                    <div class="mb-3 col-lg-3 col-sm-12 col-md-6">
+                                        {{ form.status|as_crispy_field }}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if form.remark %}
+                                    <div class="mb-3 col-lg-6 col-sm-12 col-md-6">
+                                        {{ form.remark|as_crispy_field }}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if request.user.usertype == "director" %}
+                                        <div class="col-lg-3 col-sm-12 col-md-6">
+                                            <label for="re_assign" class="form-label">Did you want to re-assign?</label>
+                                            <select class="form-select" id="re_assign" name="re_assign">
+                                                <option value="no" selected>No</option>
+                                                <option value="yes">Yes</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-lg-3 col-sm-12 col-md-6" id="reassign_usertype_wrapper" style="display: none;">
+                                            <label for="reassign_usertype" class="form-label">Select Usertype</label>
+                                            <select class="form-select" id="reassign_usertype" name="reassign_usertype">
+                                                <option value="">-- Select --</option>
+                                                {% for key, label in reassign_usertype_choices %}
+                                                    <option value="{{ key }}">{{ label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    {% endif %}
+
+                                </div>
+
+                                <div class="row">
+                                    {% if request.user.usertype == "OE" and not form.remark %}
+                                        <!-- Minimalistic Editable Flow UI: Only user-added usertypes + fixed Director at end -->
+                                        <div class="mb-3 col-12">
+                                            <label class="form-label mb-2">Usertype Flow</label>
+                                            <div class="usertype-flow-minimal d-flex align-items-center flex-wrap mb-2" style="gap: 0.5rem;">
+                                                {% for key in form.user_flow.value %}
+                                                    <span class="usertype-pill usertype-middle position-relative" data-key="{{ key }}">
+                                                        {% for val, lbl in usertype_choices %}
+                                                            {% if val == key %}{{ lbl }}{% endif %}
+                                                        {% endfor %}
+                                                        <button type="button" class="remove-middle-usertype" data-key="{{ key }}" title="Remove" tabindex="-1">&times;</button>
+                                                    </span>
+                                                {% endfor %}
+                                                <span class="usertype-pill fixed">Director</span>
+                                            </div>
+                                            <div class="input-group input-group-sm" style="max-width: 320px;">
+                                                <select id="usertype-add-select" class="form-select" style="min-width: 140px;">
+                                                    <option value="">Add usertype...</option>
+                                                    {% for key, label in usertype_choices %}
+                                                        {% if key not in form.user_flow.value and key != "College" and key != "OE" and key != "director" %}
+                                                            <option value="{{ key }}">{{ label }}</option>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                                <button type="button" id="add-usertype-btn" class="btn btn-outline-primary px-3">+</button>
+                                            </div>
+                                            <!-- Hidden inputs for user-added usertypes only -->
+                                            <div id="user_flow_hidden_inputs">
+                                                {% for val in form.user_flow.value %}
+                                                    <input type="hidden" name="user_flow" value="{{ val }}">
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            
+                                <div class="card-footer">
+                                    <div class="row">
+                                        <div class="col d-flex justify-content-end">
+                                            <button type="submit" class="btn btn-success"><i class="fe fe-save"></i> Forward</button>
+                                            <button type="button" onclick="history.back()" class="btn btn-outline-info ms-2"> <i class="fa fa-cancel"></i> Cancel</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                            </div>
+                        </div>
+                      
+                        
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+        <!--End::row-1 -->
+
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block javascript %}
+{{ form.media }}
+<style>
+.usertype-flow-minimal .usertype-pill {
+    display: inline-block;
+    padding: 0.25em 0.9em 0.25em 0.9em;
+    border-radius: 999px;
+    background: #f5f5f7;
+    color: #222;
+    font-size: 1em;
+    border: 1px solid #e0e0e0;
+    position: relative;
+    transition: background 0.2s;
+}
+.usertype-flow-minimal .usertype-pill.fixed {
+    background: #f0f0f0;
+    color: #444;
+    font-weight: 500;
+    border: 1px solid #e0e0e0;
+}
+.usertype-flow-minimal .usertype-pill.usertype-middle {
+    background: #e9f5ff;
+    color: #1976d2;
+    border: 1px solid #b6d7f7;
+}
+.usertype-flow-minimal .usertype-arrow {
+    color: #bdbdbd;
+    font-size: 1.2em;
+    user-select: none;
+}
+.usertype-flow-minimal .remove-middle-usertype {
+    display: none;
+    position: absolute;
+    top: 0.1em;
+    right: 0.3em;
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1.1em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+.usertype-flow-minimal .usertype-pill.usertype-middle:hover .remove-middle-usertype {
+    display: inline;
+}
+.usertype-flow-minimal .usertype-pill.usertype-middle:focus-within .remove-middle-usertype {
+    display: inline;
+}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // --- Prevent multiple submits and show loading spinner ---
+    var form = document.getElementById('request-form');
+    var submitBtn = document.querySelector('#request-form button[type="submit"]');
+    var isSubmitting = false;
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            if (isSubmitting) {
+                e.preventDefault();
+                return false;
+            }
+            isSubmitting = true;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...';
+            // Let the form submit naturally
+        });
+    }
+    // --- End prevent multiple submits ---
+    // Initial user-added usertypes (middle section)
+    const initialUserFlow = [{% for key in form.user_flow.value %}'{{ key }}',{% endfor %}];
+    const usertypeChoices = [
+        {% for value, label in usertype_choices %}
+            { value: '{{ value }}', label: '{{ label }}' },
+        {% endfor %}
+    ];
+    let middleUsertypes = [...initialUserFlow];
+    function updateFlowChart() {
+        // Update hidden inputs
+        const hiddenInputsDiv = document.getElementById('user_flow_hidden_inputs');
+        hiddenInputsDiv.innerHTML = '';
+        middleUsertypes.forEach(val => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'user_flow';
+            input.value = val;
+            hiddenInputsDiv.appendChild(input);
+        });
+        // Update pills
+        const flowDiv = document.querySelector('.usertype-flow-minimal');
+        if (flowDiv) {
+            // Remove all middle usertype pills and arrows
+            flowDiv.querySelectorAll('.usertype-pill.usertype-middle').forEach(el => el.remove());
+            flowDiv.querySelectorAll('.usertype-arrow.middle-arrow').forEach(el => el.remove());
+            // Insert middle usertypes and arrows before Director
+            const directorPill = flowDiv.querySelector('.usertype-pill.fixed');
+            let insertBefore = directorPill;
+            middleUsertypes.forEach((usertype, idx) => {
+                // Only insert arrow if not the first usertype
+                if (idx > 0) {
+                    const arrow = document.createElement('span');
+                    arrow.className = 'usertype-arrow middle-arrow';
+                    arrow.innerHTML = '&#8594;';
+                    insertBefore.parentNode.insertBefore(arrow, insertBefore);
+                }
+                // Pill
+                const label = usertypeChoices.find(u => u.value === usertype)?.label || usertype;
+                const pill = document.createElement('span');
+                pill.className = 'usertype-pill usertype-middle position-relative';
+                pill.setAttribute('data-key', usertype);
+                pill.innerText = label;
+                // Remove button
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'remove-middle-usertype';
+                btn.setAttribute('data-key', usertype);
+                btn.title = 'Remove';
+                btn.tabIndex = -1;
+                btn.innerHTML = '&times;';
+                btn.onclick = function () {
+                    middleUsertypes.splice(idx, 1);
+                    updateFlowChart();
+                };
+                pill.appendChild(btn);
+                insertBefore.parentNode.insertBefore(pill, insertBefore);
+            });
+            // Only insert arrow before Director if there is at least one usertype
+            if (middleUsertypes.length > 0) {
+                const arrow = document.createElement('span');
+                arrow.className = 'usertype-arrow middle-arrow';
+                arrow.innerHTML = '&#8594;';
+                insertBefore.parentNode.insertBefore(arrow, insertBefore);
+            }
+        }
+    }
+    updateFlowChart();
+    // Add usertype
+    const addBtn = document.getElementById('add-usertype-btn');
+    if (addBtn) {
+        addBtn.onclick = function () {
+            const select = document.getElementById('usertype-add-select');
+            const val = select.value;
+            if (val && !middleUsertypes.includes(val)) {
+                middleUsertypes.push(val);
+                updateFlowChart();
+                select.value = '';
+            }
+        };
+    }
+});
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const reAssignSelect = document.getElementById("re_assign");
+        const usertypeWrapper = document.getElementById("reassign_usertype_wrapper");
+    
+        if (reAssignSelect) {
+            reAssignSelect.addEventListener("change", function () {
+                if (this.value === "yes") {
+                    usertypeWrapper.style.display = "block";
+                } else {
+                    usertypeWrapper.style.display = "none";
+                }
+            });
+        }
+    });
+</script>
+
+
+{% endblock %}

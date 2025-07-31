@@ -1,0 +1,303 @@
+{% load static %}
+ <!-- app-header -->
+ <header class="app-header">
+
+    <!-- Start::main-header-container -->
+    <div class="main-header-container container-fluid">
+
+        <!-- Start::header-content-left -->
+        <div class="header-content-left">
+
+            <!-- Start::header-element -->
+            <div class="header-element">
+                <div class="horizontal-logo">
+                    <a href="{% url 'core:home' %}" class="header-logo">
+                        <img src="{% static 'app/assets/images/brand-logos/desktop-logo.png' %}" alt="logo" class="desktop-logo">
+                        <img src="{% static 'app/assets/images/brand-logos/toggle-logo.png' %}" alt="logo" class="toggle-logo">
+                        <img src="{% static 'app/assets/images/brand-logos/desktop-dark.png' %}" alt="logo" class="desktop-dark">
+                        <img src="{% static 'app/assets/images/brand-logos/toggle-dark.png' %}" alt="logo" class="toggle-dark">
+                        <img src="{% static 'app/assets/images/brand-logos/desktop-white.png' %}" alt="logo" class="desktop-white">
+                        <img src="{% static 'app/assets/images/brand-logos/toggle-white.png' %}" alt="logo" class="toggle-white">
+                    </a>
+                </div>
+            </div>
+            <!-- End::header-element -->
+
+            <!-- Start::header-element -->
+            <div class="header-element">
+                <!-- Start::header-link -->
+                <a aria-label="Hide Sidebar" class="sidemenu-toggle header-link animated-arrow hor-toggle horizontal-navtoggle" data-bs-toggle="sidebar" href="javascript:void(0);">
+                    <span>
+                
+                    </span>
+                </a>
+                <!-- End::header-link -->
+                <!-- Start::header-search -->
+                {% comment %} <div class="mt-0">
+                    <form class="form-inline d-none d-lg-block">
+                        <div class="search-element">
+                            <input type="search" class="form-control header-search" placeholder="Search…" aria-label="Search" tabindex="1">
+                            <button class="btn" >
+                                <i class="fe fe-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div> {% endcomment %}
+                <!-- End::header-search -->
+            </div>
+            <!-- End::header-element -->
+
+        </div>
+        <!-- End::header-content-left -->
+
+        <!-- Start::header-content-right -->
+        <div class="header-content-right">
+
+            <!-- Start::header-element -->
+                <div class="header-element header-search d-lg-none">
+                    <!-- Start::header-link -->
+                    <a href="javascript:void(0);" class="header-link dropdown-toggle" data-bs-auto-close="outside" data-bs-toggle="dropdown">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="header-link-icon" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    </a>
+    
+                    <ul class="main-header-dropdown dropdown-menu dropdown-menu-end" data-popper-placement="none">
+                        <li>
+                            <span class="dropdown-item d-flex align-items-center" >
+                                <span class="input-group">
+                                    <input type="text" class="form-control" placeholder="Search..." aria-label="Search input" aria-describedby="button-addon2">
+                                    <button class="btn btn-primary" type="button" id="button-addon2">Search</button>
+                                </span>
+                            </span>
+                        </li>
+                    </ul>
+    
+                    <!-- End::header-link -->
+                </div>
+            <!-- End::header-element -->
+            
+            {% if loged_branch %}
+            <div class="header-element header-details d-none d-lg-flex">
+                <span class="badge  bg-success"><i class="fe fe-shuffle"></i> {{ loged_branch }}</span>
+            </div>
+            {% endif %}
+            
+
+            <!-- Start::header-element -->
+            <div class="header-element header-theme-mode">
+                <!-- Start::header-link|layout-setting -->
+                <a href="javascript:void(0);" class="header-link layout-setting">
+                    <span class="light-layout lh-1">
+                        <!-- Start::header-link-icon -->
+                    <i class="fe fe-moon header-link-icon"></i>
+                        <!-- End::header-link-icon -->
+                    </span>
+                    <span class="dark-layout lh-1">
+                        <!-- Start::header-link-icon -->
+                    <i class="fe fe-sun header-link-icon"></i>
+                        <!-- End::header-link-icon -->
+                    </span>
+                </a>
+                <!-- End::header-link|layout-setting -->
+            </div>
+            <!-- End::header-element -->
+
+            <!-- Notification Bell -->
+            <div class="header-element">
+                <a class="header-link position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-bell"></i>
+                    <span id="notification-count"
+                          class="badge bg-danger rounded-circle d-flex align-items-center justify-content-center position-absolute top-0 start-100 translate-middle"
+                          style="width: 22px; height: 22px; font-size: 13px; padding: 0;">
+                      0
+                    </span>
+                </a>
+                <div class="dropdown-menu dropdown-menu-end p-0 border-0 shadow" aria-labelledby="notificationDropdown"
+                     style="min-width: 340px; max-width: 380px; border-radius: 14px; overflow: hidden;">
+                    <div class="bg-light border-bottom px-3 py-2 fw-semibold" style="font-size: 1rem;">
+                        Notifications
+                    </div>
+                    <ul id="notification-list" class="list-unstyled mb-0" style="max-height: 350px; overflow-y: auto;">
+                        <li class="text-center text-muted py-4" id="notification-empty">
+                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                            <div>No new notifications</div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- End Notification Bell -->
+
+            <!-- Start::header-element -->
+            <div class="header-element header-fullscreen">
+                <!-- Start::header-link -->
+                <a onclick="openFullscreen();" href="javascript:void(0);" class="header-link">
+                    <i class="fe fe-maximize full-screen-open header-link-icon"></i>
+                    <i class="fe fe-minimize full-screen-close header-link-icon d-none"></i>
+                </a>
+                <!-- End::header-link -->
+            </div>
+            <!-- End::header-element -->
+
+           
+
+            <!-- Start::header-element -->
+            <div class="header-element main-header-profile">
+                <!-- Start::header-link|dropdown-toggle -->
+                <a href="javascript:void(0);" class="header-link dropdown-toggle mx-0 w-100" id="mainHeaderProfile" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                    <div>
+                        {% if request.user.usertype == "student" %}
+                            {% if request.user.student.photo %}
+                                <img src="{{ request.user.student.photo.url }}" alt="img" class="rounded-3 avatar avatar-md">
+                            {% else %}
+                                <img src="{{ default_user_avatar }}" alt="img" class="rounded-3 avatar avatar-md">
+                            {% endif %}
+                        {% elif request.user.employee.photo %}
+                            <img src="{{ request.user.employee.photo.url|default:default_user_avatar }}" alt="img" class="rounded-3 avatar avatar-md">
+                        {% else %}
+                            <img src="{{ default_user_avatar }}" alt="img" class="rounded-3 avatar avatar-md">
+                        {% endif %}
+                    </div>
+                </a>
+                <!-- End::header-link|dropdown-toggle -->
+                <ul class="main-header-dropdown dropdown-menu pt-0 header-profile-dropdown dropdown-menu-end" aria-labelledby="mainHeaderProfile">
+                    <Li>
+                        <div class="p-3 text-center border-bottom">
+                            <a href="#" class="text-center fw-semibold">{{request.user}}</a>
+                            <p class="text-center user-semi-title fs-13 mb-0">{{request.user.get_usertype_display}}</p>
+                        </div>
+                    </Li>
+                   
+                    <li><a class="dropdown-item d-flex align-items-center" href="{% url 'auth_password_change' %}"><i class="fe fe-edit-3 me-2"></i>Change Password</a></li>
+                    <li><a class="dropdown-item d-flex align-items-center" href="{% url 'user_sessions:session_list' %}"><i class="fe fe-headphones me-2"></i>My Sessions</a></li>
+                    <li><a class="dropdown-item d-flex align-items-center" href="{% url 'auth_logout' %}"><i class="fe fe-power me-2"></i>Log Out</a></li>
+                </ul>
+            </div>  
+
+          
+
+        </div>
+        <!-- End::header-content-right -->
+
+    </div>
+    <!-- End::main-header-container -->
+
+</header>
+<!-- /app-header -->
+<script>
+function timeAgo(dateString) {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diff = Math.floor((now - date) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return date.toLocaleDateString();
+}
+
+function renderNotification(n) {
+    const avatar = n.avatar_url || '/static/app/assets/images/brand-logos/desktop-logo.png';
+    const readClass = n.is_read ? 'notification-read' : 'notification-unread';
+    return `
+        <a class="d-flex align-items-center px-3 py-2 text-decoration-none notification-item ${readClass}"
+           href="/notifications/read/${n.id}/" style="transition: background 0.2s;">
+            <img src="${avatar}" class="rounded-circle me-3" style="width:40px;height:40px;object-fit:cover;">
+            <div class="flex-grow-1">
+                <div class="fw-semibold">${n.message}</div>
+                <div class="text-muted small">${timeAgo(n.timestamp)}</div>
+            </div>
+            ${!n.is_read ? '<span class="badge bg-primary ms-2" style="width:10px;height:10px;border-radius:50%;"></span>' : ''}
+        </a>
+    `;
+}
+
+function setupNotificationClickHandlers() {
+    document.querySelectorAll('#notification-list .notification-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.getAttribute('href');
+            // Extract notification id from URL
+            const match = url.match(/\/notifications\/read\/(\d+)\//);
+            if (!match) return window.location.href = url;
+            const notificationId = match[1];
+            fetch(`/notifications/mark_read/${notificationId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove this notification from the list
+                    this.parentElement.remove();
+                    // Decrement the count
+                    const countElem = document.getElementById('notification-count');
+                    let count = parseInt(countElem.textContent, 10);
+                    if (!isNaN(count) && count > 0) {
+                        countElem.textContent = count - 1;
+                    }
+                    // If list is empty, show empty message
+                    if (document.querySelectorAll('#notification-list .notification-item').length === 0) {
+                        document.getElementById('notification-list').innerHTML = `\n                        <li class=\"text-center text-muted py-4\" id=\"notification-empty\">\n                            <i class=\"bi bi-inbox\" style=\"font-size: 2rem;\"></i>\n                            <div>No new notifications</div>\n                        </li>`;
+                    }
+                    // Redirect to the notification's URL
+                    window.location.href = data.url;
+                } else {
+                    window.location.href = url;
+                }
+            })
+            .catch(() => {
+                window.location.href = url;
+            });
+        });
+    });
+}
+
+function fetchNotifications() {
+    fetch('/notifications/')
+        .then(response => response.json())
+        .then(data => {
+            const count = data.count;
+            const list = data.notifications;
+            document.getElementById('notification-count').textContent = count;
+            const notificationList = document.getElementById('notification-list');
+            notificationList.innerHTML = '';
+            if (list.length === 0) {
+                notificationList.innerHTML = `\n                    <li class=\"text-center text-muted py-4\" id=\"notification-empty\">\n                        <i class=\"bi bi-inbox\" style=\"font-size: 2rem;\"></i>\n                        <div>No new notifications</div>\n                    </li>`;
+            } else {
+                list.forEach(n => {
+                    const item = document.createElement('li');
+                    item.innerHTML = renderNotification(n);
+                    notificationList.appendChild(item);
+                });
+                setupNotificationClickHandlers();
+            }
+        });
+}
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('notificationDropdown').addEventListener('click', fetchNotifications);
+    setInterval(fetchNotifications, 60000);
+    fetchNotifications();
+});
+</script>
+<style>
+.notification-item {
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+    border-radius: 0;
+}
+.notification-item:last-child {
+    border-bottom: none;
+}
+.notification-unread {
+    background: #f0f6ff;
+    font-weight: 600;
+}
+.notification-read {
+    background: #fff;
+    font-weight: 400;
+}
+.notification-item:hover {
+    background: #e9ecef;
+}
+</style>
