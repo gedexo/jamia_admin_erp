@@ -93,14 +93,29 @@ class RequestSubmissionDetailView(mixins.HybridDetailView):
         except UserProfile.DoesNotExist:
             user_profile = None
 
-        if user_profile and user_profile.user.usertype == "director" or self.request.user.is_superuser :
+        if user_profile and (user_profile.user.usertype == "director" or self.request.user.is_superuser):
+            # Director or superuser sees all status history
             context["status_history"] = self.object.status_history.all()
-        elif user_profile and user_profile.user.usertype == "OE" :
-            context["status_history"] = self.object.status_history.all()
-        else:
-            context["status_history"] = self.object.status_history.filter(
-                Q(user=user_profile) | Q(next_usertype=user_profile.user.usertype)
+
+        elif user_profile:
+            usertype = user_profile.user.usertype
+
+            # Get director entries assigned to this usertype
+            director_assigned = self.object.status_history.filter(
+                user__user__usertype="director",
+                next_usertype=usertype
             )
+
+            # Get status entries submitted by the current user
+            self_submitted = self.object.status_history.filter(
+                user=user_profile
+            )
+
+            # Combine both querysets
+            context["status_history"] = (director_assigned | self_submitted).distinct().order_by("-date")
+
+        else:
+            context["status_history"] = []
 
         context["latest_submitted_user_ids"] = (
             list(latest_status.submitted_users.values_list('user__id', flat=True))
