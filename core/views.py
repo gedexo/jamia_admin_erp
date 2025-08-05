@@ -76,11 +76,16 @@ class HomeView(mixins.HybridTemplateView):
         else:
             filtered_users = users_queryset.filter(id=user.id)
             filtered_profiles = profiles_queryset.filter(user=user)
-            filtered_requests = requests_queryset.filter(
-                Q(creator=user) |
-                Q(status_history__submitted_users=user_profile) |
-                Q(status_history__next_usertype=getattr(user, 'usertype', None))
-            ).distinct()
+            
+            if user.usertype == "College":
+                # Only show requests created by the current College user
+                filtered_requests = requests_queryset.filter(creator=user)
+            else:
+                filtered_requests = requests_queryset.filter(
+                    Q(creator=user) |
+                    Q(status_history__submitted_users=user_profile) |
+                    Q(status_history__next_usertype=getattr(user, 'usertype', None))
+                ).distinct()
 
         # User Statistics
         if user.usertype == "director" or user.usertype == "OE":
@@ -161,6 +166,10 @@ class HomeView(mixins.HybridTemplateView):
                 Q(latest_status_status__in=['approved', 'rejected']) |
                 Q(latest_status_user_id=user_profile.id)
             )
+            
+            # For College users, only show requests they created
+            if user.usertype == "College":
+                assigned_requests = assigned_requests.filter(creator=user)
         else:
             assigned_requests = RequestSubmission.objects.none()
         context['assigned_requests_count'] = assigned_requests.count()

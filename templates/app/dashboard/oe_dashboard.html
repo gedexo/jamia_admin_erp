@@ -166,7 +166,7 @@
                                                 </span>
                                                 <div>
                                                     <h6 class="mb-0 fs-14">{{ request.title|truncatechars:30 }}</h6>
-                                                    <small class="text-muted">{{ request.description|safe|truncatechars:50 }}</small>
+                                                    {% comment %} <small class="text-muted">{{ request.description|safe|truncatechars:50 }}</small> {% endcomment %}
                                                 </div>
                                             </div>
                                         </td>
