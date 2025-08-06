@@ -94,9 +94,14 @@
                                 </div>
 
                                 <div class="row">
+                                     {% if form.alternative_description %}
+                                        <div class="mb-3 col-lg-4">
+                                            {{ form.alternative_description|as_crispy_field }}
+                                        </div>
+                                    {% endif %}
                                     {% if request.user.usertype == "OE" and not form.remark %}
                                         <!-- Minimalistic Editable Flow UI: Only user-added usertypes + fixed Director at end -->
-                                        <div class="mb-3 col-12">
+                                        <div class="mb-3 col-lg-8">
                                             <label class="form-label mb-2">Usertype Flow</label>
                                             <div class="usertype-flow-minimal d-flex align-items-center flex-wrap mb-2" style="gap: 0.5rem;">
                                                 {% for key in form.user_flow.value %}

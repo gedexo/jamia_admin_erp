@@ -172,9 +172,9 @@
                                         </td>
                                         <td>
                                             {% with request.status_history.first as latest_status %}
-                                                {% if latest_status.status == 'approved' %}
+                                                {% if latest_status.status == 'approved' and request.current_usertype == 'OE' %}
                                                     <span class="badge bg-success-transparent">Approved</span>
-                                                {% elif latest_status.status == 'rejected' %}
+                                                {% elif latest_status.status == 'rejected' and request.current_usertype == 'OE' %}
                                                     <span class="badge bg-danger-transparent">Rejected</span>
                                                 {% else %}
                                                     <span class="badge bg-warning-transparent">On Hold</span>
@@ -294,9 +294,9 @@
                                         </td>
                                         <td>
                                             {% with request.status_history.first as latest_status %}
-                                                {% if latest_status.status == 'approved' %}
+                                                {% if latest_status.status == 'approved' and request.current_usertype == 'OE' %}
                                                     <span class="badge bg-success-transparent">Approved</span>
-                                                {% elif latest_status.status == 'rejected' %}
+                                                {% elif latest_status.status == 'rejected' and request.current_usertype == 'OE' %}
                                                     <span class="badge bg-danger-transparent">Rejected</span>
                                                 {% else %}
                                                     <span class="badge bg-warning-transparent">Pending</span>

@@ -45,6 +45,7 @@ class RequestSubmission(BaseModel):
     college = models.ForeignKey("users.UserProfile", on_delete=models.PROTECT, related_name="college", limit_choices_to={'user__usertype': 'College'})
     title = models.ForeignKey("masters.RequestSubmissionType", on_delete=models.PROTECT, limit_choices_to={'is_active': True}, null=True)
     description = HTMLField(null=True)
+    alternative_description = HTMLField(null=True, blank=True)
     attachment = models.FileField(upload_to="request_submissions/", blank=True, null=True)
     current_usertype = models.CharField(max_length=30, choices=USERTYPE_CHOICES, null=True)
     usertype_flow = models.JSONField(default=list, null=True)

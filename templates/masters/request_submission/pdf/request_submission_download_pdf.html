@@ -285,7 +285,27 @@
                             <td>{{ history.date|date:'d M Y, h:i A' }}</td>
                             <td>{{ history.user|default:'-' }}</td>
                             <td>{{ history.usertype }}</td>
-                            <td>{{ history.status }}</td>
+                            <td>
+                                {% if instance.current_usertype == 'College' %}
+                                    {% if history.status == 'approved' %}
+                                        approved
+                                    {% elif history.status == 'rejected' %}
+                                        rejected
+                                    {% else %}
+                                        pending
+                                    {% endif %}
+                                {% elif instance.current_usertype == 'OE' %}
+                                    {% if history.status == 'approved' %}
+                                        approved
+                                    {% elif history.status == 'rejected' %}
+                                        rejected
+                                    {% else %}
+                                        pending
+                                    {% endif %}
+                                {% else %}
+                                    pending
+                                {% endif %}
+                            </td>
                             <td>{{ history.remark|safe|default:'-' }}</td>
                             <td>{{ history.next_usertype|default:'-' }}</td>
                         </tr>

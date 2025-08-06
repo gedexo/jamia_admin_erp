@@ -364,17 +364,19 @@ class RequestSubmissionDeleteView(mixins.HybridDeleteView):
 def download_request_submission_pdf(request, pk):
     instance = get_object_or_404(RequestSubmission, pk=pk)
 
-    oe_remark_obj = (
+    # Get the latest OE remark
+    last_oe_remark = (
         instance.status_history
         .filter(usertype="OE", remark__isnull=False)
         .order_by("-date")
         .first()
     )
-    full_text = oe_remark_obj.remark if oe_remark_obj else ""
 
-    # Set word lengths for first and other pages
+    full_text = last_oe_remark.remark if last_oe_remark else ""
+
+    # Word splitting for pages
     first_page_length = 370
-    other_page_length = 423 
+    other_page_length = 423
 
     words = full_text.split()
     chunks = []
@@ -383,7 +385,6 @@ def download_request_submission_pdf(request, pk):
         for i in range(first_page_length, len(words), other_page_length):
             chunks.append(' '.join(words[i:i + other_page_length]))
     else:
-        # All content fits on first page
         chunks.append(' '.join(words))
 
     context = {

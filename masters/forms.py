@@ -32,7 +32,7 @@ class RequestStatusUpdateForm(forms.ModelForm):
     class Meta:
         model = RequestSubmission
         fields = [
-            'title', 'description', 'attachment',
+            'title', 'description', 'alternative_description', 'attachment',
             'status', 'remark',
             'user_flow', 'reassign_usertype',
         ]
@@ -52,8 +52,16 @@ class RequestStatusUpdateForm(forms.ModelForm):
         # Hide remark for OE's first submission
         if self.usertype == "OE" and instance:
             oe_history_count = instance.status_history.filter(usertype="OE").count()
+
             if oe_history_count == 0:
                 self.fields.pop('remark', None)
+            else:
+                self.fields.pop('alternative_description', None)
+        else:
+            self.fields.pop('alternative_description', None)
+
+        if self.usertype == "director":
+            self.fields["remark"].required = False
 
         # Set initial values for hidden fields
         if instance and 'user_flow' in self.fields:

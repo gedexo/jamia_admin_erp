@@ -41,24 +41,31 @@
           </div>
           <div class="status-content">
             <h2 class="status-title">
-              {% if object.status == 'approved' %}
+              {% if object.status == 'approved' and object.current_usertype == 'College' %}
                 Request Approved
-              {% elif object.status == 'rejected' %}
+              {% elif object.status == 'rejected' and object.current_usertype == 'College' %}
                 Request Rejected
               {% else %}
                 Request Under Review
               {% endif %}
             </h2>
             <p class="status-subtitle">
-              {% if object.status == 'approved' %}
+              {% if object.status == 'approved' and object.current_usertype == 'College' %}
                 Your submission has been approved.
-              {% elif object.status == 'rejected' %}
+              {% elif object.status == 'rejected' and object.current_usertype == 'College' %}
                 Your submission has been rejected.
               {% else %}
                 Your submission is currently under review and being processed.
               {% endif %}
             </p>
-            {% if object.status == 'approved' or object.status == 'rejected' %}
+            {% if object.status == 'approved' and object.current_usertype == 'College' %}
+              <div class="status-actions">
+                <a href="{% url 'masters:request_submission_pdf' object.pk %}" target="_blank" class="pdf-view-btn">
+                  <i class="fe fe-file-text"></i>
+                  <span>View PDF</span>
+                </a>
+              </div>
+            {% elif object.status == 'rejected' and object.current_usertype == 'College' %}
               <div class="status-actions">
                 <a href="{% url 'masters:request_submission_pdf' object.pk %}" target="_blank" class="pdf-view-btn">
                   <i class="fe fe-file-text"></i>
@@ -102,12 +109,38 @@
             </div>
           </div>
         </div>
-        <div class="detail-item">
-          <label class="detail-label">Description</label>
-          <div class="detail-value border-top pt-3 mt-2">
-            {{ object.description|safe }}
+        <div class="row">
+          <div class="col-lg-12">
+            <div class="detail-item">
+              <div class="d-flex justify-content-between w-100">
+                <label class="detail-label">Description</label>
+                {% if request.user.usertype == "director" or request.user.usertype == "OE" or request.user.is_superuser %}
+                <div class="detail-button btn btn-primary btn-sm view-description-btn" data-bs-toggle="modal" data-bs-target="#descriptionModal" data-remark-id="description-{{ object.id }}">View Description</div>
+                {% endif %}
+              </div>
+              
+              <div class="detail-value border-top pt-3 mt-2">
+              {% if request.user.usertype == "College" %}
+                  {% if object.description %}
+                    {{ object.description|safe }}
+                  {% else %}
+                    --
+                  {% endif %}
+              {% else %}
+                {% if object.alternative_description %}
+                  {{ object.alternative_description|safe }}
+                {% else %}
+                  --
+                {% endif %}
+              {% endif %}
+              </div>
+              <script type="text/html" id="description-{{ object.id }}">
+                {{ object.description|safe }}
+              </script>
+            </div>
           </div>
         </div>
+        
       </div>
     </div>
 
@@ -137,9 +170,23 @@
                   <td>{{ history.user|default:"-" }}</td>
                   <td>{{ history.usertype }}</td>
                   <td>
-                    <span class="badge bg-{% if history.status == 'approved' %}success{% elif history.status == 'rejected' %}danger{% else %}info{% endif %}-light">
-                      {{ history.status }}
-                    </span>
+                    {% if request.user.usertype == 'College' %}
+                      {% if history.status == 'approved' and object.current_usertype == 'College' %}
+                        <span class="badge bg-success-light">approved</span>
+                      {% elif history.status == 'rejected' and object.current_usertype == 'College' %}
+                        <span class="badge bg-danger-light">rejected</span>
+                      {% else %}
+                        <span class="badge bg-info-light">pending</span>
+                      {% endif %}
+                    {% else %}
+                      {% if history.status == 'approved' and object.current_usertype == 'OE' %}
+                        <span class="badge bg-success-light">approved</span>
+                      {% elif history.status == 'rejected' and object.current_usertype == 'OE' %}
+                        <span class="badge bg-danger-light">rejected</span>
+                      {% else %}
+                        <span class="badge bg-info-light">pending</span>
+                      {% endif %}
+                    {% endif %}
                   </td>
                   <td>
                         {% if history.remark %}
@@ -175,7 +222,7 @@
 </div>
 
 
-<!-- Modal -->
+<!--Remark Modal -->
 <div class="modal fade" id="remarkModal" tabindex="-1" aria-labelledby="remarkModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -190,6 +237,21 @@
   </div>
 </div>
 
+<!--Detail Modal -->
+<div class="modal fade" id="descriptionModal" tabindex="-1" aria-labelledby="descriptionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="descriptionModalLabel">Request Description</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="descriptionModalBody">
+        <!-- Description content will appear here -->
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock content %}
 {% block javascript %}
 <script src="https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js"></script>
@@ -198,25 +260,35 @@
     // === Status Animation ===
     const container = document.getElementById('statusAnimation');
     if (container) {
+      const isCollege = '{{ request.user.usertype }}' === 'College';
+      const isApproved = '{{ object.status }}' === 'approved';
+      const isRejected = '{{ object.status }}' === 'rejected';
+      const isCurrentCollege = '{{ object.current_usertype }}' === 'College';
+      let animationPath = '';
+      if (isCollege && isApproved && isCurrentCollege) {
+        animationPath = '{% static 'app/assets/animation/success.json' %}';
+      } else if (isCollege && isRejected && isCurrentCollege) {
+        animationPath = '{% static 'app/assets/animation/rejection.json' %}';
+      } else {
+        animationPath = '{% static 'app/assets/animation/timing.json' %}';
+      }
       const animation = lottie.loadAnimation({
         container: container,
         renderer: 'svg',
-        loop: {% if object.status == 'approved' or object.status == 'rejected' %}false{% else %}true{% endif %},
+        loop: (isCollege && (isApproved || isRejected) && isCurrentCollege) ? false : true,
         autoplay: true,
-        path: "{% if object.status == 'approved' %}{% static 'app/assets/animation/success.json' %}{% elif object.status == 'rejected' %}{% static 'app/assets/animation/rejection.json' %}{% else %}{% static 'app/assets/animation/timing.json' %}{% endif %}"
+        path: animationPath
       });
-
       container.style.width = '100%';
       container.style.height = '100%';
-
       animation.addEventListener('data_failed', function () {
-        {% if object.status == "approved" %}
+        if (isCollege && isApproved && isCurrentCollege) {
           container.innerHTML = '<i class="fe fe-check-circle animation-fallback"></i>';
-        {% elif object.status == "rejected" %}
+        } else if (isCollege && isRejected && isCurrentCollege) {
           container.innerHTML = '<i class="fe fe-x-circle animation-fallback"></i>';
-        {% else %}
+        } else {
           container.innerHTML = '<i class="fe fe-clock animation-fallback"></i>';
-        {% endif %}
+        }
       });
     }
 
@@ -232,6 +304,22 @@
           const html = scriptTag.textContent;
           document.getElementById('remarkModalBody').innerHTML = html;
           remarkModal.show();
+        }
+      });
+    });
+
+    // === Description Modal ===
+    const descriptionModalEl = document.getElementById('descriptionModal');
+    const descriptionModal = new bootstrap.Modal(descriptionModalEl);
+
+    document.querySelectorAll('.view-description-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const descriptionId = btn.getAttribute('data-remark-id');
+        const scriptTag = document.getElementById(descriptionId);
+        if (scriptTag) {
+          const html = scriptTag.textContent;
+          document.getElementById('descriptionModalBody').innerHTML = html;
+          descriptionModal.show();
         }
       });
     });
@@ -361,10 +449,10 @@
 
   /* Status Section */
   .status-section {
-    background: linear-gradient(135deg, {% if object.status == "approved" %}#f0fdf4{% elif object.status == "rejected" %}#fef2f2{% else %}#eff6ff{% endif %} 0%, {% if object.status == "approved" %}#ecfdf5{% elif object.status == "rejected" %}#fef7f7{% else %}#dbeafe{% endif %} 100%);
+    background: linear-gradient(135deg, {% if object.status == "approved" and object.current_usertype == "College" %}#f0fdf4{% elif object.status == "rejected" and object.current_usertype == "College" %}#fef2f2{% else %}#eff6ff{% endif %} 0%, {% if object.status == "approved" and object.current_usertype == "College" %}#ecfdf5{% elif object.status == "rejected" and object.current_usertype == "College" %}#fef7f7{% else %}#dbeafe{% endif %} 100%);
     border-radius: 16px;
     padding: 2rem;
-    border: 1px solid {% if object.status == "approved" %}#dcfce7{% elif object.status == "rejected" %}#fecaca{% else %}#bfdbfe{% endif %};
+    border: 1px solid {% if object.status == "approved" and object.current_usertype == "College" %}#dcfce7{% elif object.status == "rejected" and object.current_usertype == "College" %}#fecaca{% else %}#bfdbfe{% endif %};
   }
   
   .status-container {
@@ -378,11 +466,11 @@
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background: {% if object.status == "approved" %}#10b981{% elif object.status == "rejected" %}#ef4444{% else %}#3b82f6{% endif %};
+    background: {% if object.status == "approved" and object.current_usertype == "College" %}#10b981{% elif object.status == "rejected" and object.current_usertype == "College" %}#ef4444{% else %}#3b82f6{% endif %};
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px {% if object.status == "approved" %}rgba(16, 185, 129, 0.25){% elif object.status == "rejected" %}rgba(239, 68, 68, 0.25){% else %}rgba(59, 130, 246, 0.25){% endif %};
+    box-shadow: 0 4px 12px {% if object.status == "approved" and object.current_usertype == "College" %}rgba(16, 185, 129, 0.25){% elif object.status == "rejected" and object.current_usertype == "College" %}rgba(239, 68, 68, 0.25){% else %}rgba(59, 130, 246, 0.25){% endif %};
   }
   
   .animation-container {
@@ -406,14 +494,14 @@
   .status-title {
     font-size: 1.5rem;
     font-weight: 600;
-    color: {% if object.status == "approved" %}#065f46{% elif object.status == "rejected" %}#991b1b{% else %}#1e40af{% endif %};
+    color: {% if object.status == "approved" and object.current_usertype == "College" %}#065f46{% elif object.status == "rejected" and object.current_usertype == "College" %}#991b1b{% else %}#1e40af{% endif %};
     margin: 0 0 0.5rem 0;
     line-height: 1.3;
   }
   
   .status-subtitle {
     font-size: 0.9375rem;
-    color: {% if object.status == "approved" %}#047857{% elif object.status == "rejected" %}#dc2626{% else %}#2563eb{% endif %};
+    color: {% if object.status == "approved" and object.current_usertype == "College" %}#047857{% elif object.status == "rejected" and object.current_usertype == "College" %}#dc2626{% else %}#2563eb{% endif %};
     margin: 0 0 1rem 0;
     line-height: 1.5;
     opacity: 0.9;
@@ -421,11 +509,11 @@
   
   .status-remark {
     background: white;
-    border: 1px solid {% if object.status == "approved" %}#bbf7d0{% elif object.status == "rejected" %}#fca5a5{% else %}#93c5fd{% endif %};
+    border: 1px solid {% if object.status == "approved" and object.current_usertype == "College" %}#bbf7d0{% elif object.status == "rejected" and object.current_usertype == "College" %}#fca5a5{% else %}#93c5fd{% endif %};
     border-radius: 8px;
     padding: 1rem;
     font-size: 0.875rem;
-    color: {% if object.status == "approved" %}#065f46{% elif object.status == "rejected" %}#991b1b{% else %}#1e40af{% endif %};
+    color: {% if object.status == "approved" and object.current_usertype == "College" %}#065f46{% elif object.status == "rejected" and object.current_usertype == "College" %}#991b1b{% else %}#1e40af{% endif %};
     line-height: 1.5;
   }
   
@@ -440,9 +528,9 @@
     gap: 0.5rem;
     padding: 0.625rem 1rem;
     background: white;
-    border: 1px solid {% if object.status == "approved" %}#10b981{% elif object.status == "rejected" %}#ef4444{% else %}#3b82f6{% endif %};
+    border: 1px solid {% if object.status == "approved" and object.current_usertype == "College" %}#10b981{% elif object.status == "rejected" and object.current_usertype == "College" %}#ef4444{% else %}#3b82f6{% endif %};
     border-radius: 8px;
-    color: {% if object.status == "approved" %}#10b981{% elif object.status == "rejected" %}#ef4444{% else %}#3b82f6{% endif %};
+    color: {% if object.status == "approved" and object.current_usertype == "College" %}#10b981{% elif object.status == "rejected" and object.current_usertype == "College" %}#ef4444{% else %}#3b82f6{% endif %};
     text-decoration: none;
     font-size: 0.875rem;
     font-weight: 500;
@@ -451,11 +539,11 @@
   }
   
   .pdf-view-btn:hover {
-    background: {% if object.status == "approved" %}#10b981{% elif object.status == "rejected" %}#ef4444{% else %}#3b82f6{% endif %};
+    background: {% if object.status == "approved" and object.current_usertype == "College" %}#10b981{% elif object.status == "rejected" and object.current_usertype == "College" %}#ef4444{% else %}#3b82f6{% endif %};
     color: white;
     text-decoration: none;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px {% if object.status == "approved" %}rgba(16, 185, 129, 0.3){% elif object.status == "rejected" %}rgba(239, 68, 68, 0.3){% else %}rgba(59, 130, 246, 0.3){% endif %};
+    box-shadow: 0 4px 12px {% if object.status == "approved" and object.current_usertype == "College" %}rgba(16, 185, 129, 0.3){% elif object.status == "rejected" and object.current_usertype == "College" %}rgba(239, 68, 68, 0.3){% else %}rgba(59, 130, 246, 0.3){% endif %};
   }
   
   .pdf-view-btn i {

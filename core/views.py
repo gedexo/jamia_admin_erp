@@ -35,9 +35,12 @@ class HomeView(mixins.HybridTemplateView):
     
     def get_status_counts(self, requests_queryset):
         """Return a dict with counts for approved, rejected, and pending based on the status field of RequestSubmission."""
-        approved = requests_queryset.filter(status='approved').count()
-        rejected = requests_queryset.filter(status='rejected').count()
-        pending = requests_queryset.exclude(status__in=['approved', 'rejected']).count()
+        # Only count as 'approved' if status is approved and current_usertype is College
+        approved = requests_queryset.filter(status='approved', current_usertype='College').count()
+        # Only count as 'rejected' if status is rejected and current_usertype is College
+        rejected = requests_queryset.filter(status='rejected', current_usertype='College').count()
+        # Pending: not approved, not rejected, and not yet assigned to College
+        pending = requests_queryset.exclude(status__in=['approved', 'rejected']).exclude(current_usertype='College').count()
         return {'approved': approved, 'rejected': rejected, 'pending': pending}
 
     def get_context_data(self, **kwargs):
