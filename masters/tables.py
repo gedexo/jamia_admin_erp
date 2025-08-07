@@ -15,7 +15,11 @@ class RequestSubmissionTable(BaseTable):
                 <span class="badge bg-danger">Rejected</span>
             {% endif %}
         {% else %}
-            <span class="badge bg-warning text-white">Pending</span>
+            {% if record.is_processing %}
+                <span class="badge bg-info text-white">Processing</span>
+            {% else %}
+                <span class="badge bg-warning text-white">Pending</span>
+            {% endif %}
         {% endif %}
         """,
         orderable=True,

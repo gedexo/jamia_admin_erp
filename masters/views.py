@@ -50,7 +50,6 @@ class RequestSubmissionListView(mixins.HybridListView):
 
         usertype = user_profile.user.usertype
 
-        # Check if current usertype already processed the request
         already_processed = RequestSubmissionStatusHistory.objects.filter(
             submission=OuterRef('pk'),
             usertype=usertype,
@@ -58,7 +57,7 @@ class RequestSubmissionListView(mixins.HybridListView):
         )
 
         qs = qs.annotate(
-            is_processing=~Exists(already_processed)  
+            is_processing=~Exists(already_processed)
         )
 
         if usertype == "College":
@@ -69,9 +68,18 @@ class RequestSubmissionListView(mixins.HybridListView):
                 Q(status_history__submitted_users=user_profile)
             ).distinct()
 
-            status = self.request.GET.get("status")
-            if status:
-                qs = qs.filter(status_history__status=status).distinct()
+        # ✅ FIXED filtering here
+        status = self.request.GET.get("status", "").lower()
+        if status in ["approved", "rejected"]:
+            oe_to_college_ids = RequestSubmissionStatusHistory.objects.filter(
+                usertype="OE",
+                next_usertype="College"
+            ).values_list('submission_id', flat=True)
+
+            qs = qs.filter(
+                id__in=oe_to_college_ids,
+                status=status
+            ).distinct()
 
         return qs
 
