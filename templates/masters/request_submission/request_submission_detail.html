@@ -170,22 +170,16 @@
                   <td>{{ history.user|default:"-" }}</td>
                   <td>{{ history.usertype }}</td>
                   <td>
-                    {% if request.user.usertype == 'College' %}
-                      {% if history.status == 'approved' and object.current_usertype == 'College' %}
-                        <span class="badge bg-success-light">approved</span>
-                      {% elif history.status == 'rejected' and object.current_usertype == 'College' %}
-                        <span class="badge bg-danger-light">rejected</span>
-                      {% else %}
-                        <span class="badge bg-info-light">pending</span>
-                      {% endif %}
+                    {% if history.status == 'approved' %}
+                      <span class="badge bg-success-light">approved</span>
+                    {% elif history.status == 'rejected' %}
+                      <span class="badge bg-danger-light">rejected</span>
+                    {% elif history.status == 'forwarded' %}
+                      <span class="badge bg-info-light">forwarded</span>
+                    {% elif history.status == 'pending' %}
+                      <span class="badge bg-warning-light">pending</span>
                     {% else %}
-                      {% if history.status == 'approved' and object.current_usertype == 'OE' %}
-                        <span class="badge bg-success-light">approved</span>
-                      {% elif history.status == 'rejected' and object.current_usertype == 'OE' %}
-                        <span class="badge bg-danger-light">rejected</span>
-                      {% else %}
-                        <span class="badge bg-info-light">pending</span>
-                      {% endif %}
+                      <span class="badge bg-secondary-light">{{ history.status }}</span>
                     {% endif %}
                   </td>
                   <td>

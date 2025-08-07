@@ -11,10 +11,10 @@ from django.shortcuts import redirect
 from core import mixins
 from . import tables
 from . import forms
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from core.choices import USERTYPE_CHOICES
+from core.choices import USERTYPE_CHOICES, REQUEST_SUBMISSION_STATUS_CHOICES
 
 from reportlab.pdfgen import canvas
 from core.pdfview import PDFView
@@ -23,12 +23,13 @@ from django.http import HttpResponse
 from weasyprint import HTML
 from core.models import Notification
 from users.models import UserProfile
-from django.db.models import Q
 from django.forms import ModelChoiceField, ModelMultipleChoiceField
 from django.db.models import ForeignKey, OneToOneField, ManyToManyField
 from django.views.generic import View
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.http import JsonResponse
+from django_filters import FilterSet, CharFilter, ChoiceFilter
+
 
 class RequestSubmissionListView(mixins.HybridListView):
     model = RequestSubmission
@@ -37,7 +38,6 @@ class RequestSubmissionListView(mixins.HybridListView):
     permissions = ()
 
     def get_queryset(self):
-        # If superuser, show all requests (including inactive)
         if self.request.user.is_superuser:
             return RequestSubmission.objects.all()
 
@@ -50,6 +50,17 @@ class RequestSubmissionListView(mixins.HybridListView):
 
         usertype = user_profile.user.usertype
 
+        # Check if current usertype already processed the request
+        already_processed = RequestSubmissionStatusHistory.objects.filter(
+            submission=OuterRef('pk'),
+            usertype=usertype,
+            submitted_users=user_profile
+        )
+
+        qs = qs.annotate(
+            is_processing=~Exists(already_processed)  # True if NOT processed
+        )
+
         if usertype == "College":
             qs = qs.filter(created_by=user_profile)
         else:
@@ -58,9 +69,9 @@ class RequestSubmissionListView(mixins.HybridListView):
                 Q(status_history__submitted_users=user_profile)
             ).distinct()
 
-        status = self.request.GET.get("status")
-        if status:
-            qs = qs.filter(status_history__status=status).distinct()
+            status = self.request.GET.get("status")
+            if status:
+                qs = qs.filter(status_history__status=status).distinct()
 
         return qs
 
@@ -73,6 +84,7 @@ class RequestSubmissionListView(mixins.HybridListView):
             "new_link": reverse_lazy("masters:request_submission_create")
         })
         return context
+
 
 
 class RequestSubmissionDetailView(mixins.HybridDetailView):
@@ -151,7 +163,7 @@ class RequestSubmissionCreateView(mixins.HybridCreateView):
         form.instance.current_usertype = user_profile.user.usertype
         form.instance.usertype_flow = [user_profile.user.usertype, "OE"]
         form.instance.created_by = user_profile
-        form.instance.status = 'forwarded'
+        form.instance.status = 'pending'
         response = super().form_valid(form)
 
         RequestSubmissionStatusHistory.objects.create(
@@ -159,7 +171,7 @@ class RequestSubmissionCreateView(mixins.HybridCreateView):
             user=user_profile,
             usertype=user_profile.user.usertype,
             next_usertype='OE', 
-            status='forwarded',
+            status='pending',
             remark='College assigned the request directly to OE.'
         )
         

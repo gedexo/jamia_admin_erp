@@ -1,12 +1,13 @@
 import os
 from core import mixins
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Subquery, Q
+from django.db.models.functions import Cast
+from django.db.models.fields import TextField
 from django_tables2 import RequestConfig
 from django.db.models import Count
 from django.core.files.storage import default_storage
 from core.pdfview import PDFView
 from datetime import datetime, timedelta
-from django.db.models import Sum, Subquery, OuterRef
 from django.conf import settings
 from django.template import loader
 from django.test import override_settings
@@ -34,14 +35,59 @@ class HomeView(mixins.HybridTemplateView):
     template_name = "core/dashboard.html"
     
     def get_status_counts(self, requests_queryset):
-        """Return a dict with counts for approved, rejected, and pending based on the status field of RequestSubmission."""
-        # Only count as 'approved' if status is approved and current_usertype is College
-        approved = requests_queryset.filter(status='approved', current_usertype='College').count()
-        # Only count as 'rejected' if status is rejected and current_usertype is College
-        rejected = requests_queryset.filter(status='rejected', current_usertype='College').count()
-        # Pending: not approved, not rejected, and not yet assigned to College
-        pending = requests_queryset.exclude(status__in=['approved', 'rejected']).exclude(current_usertype='College').count()
-        return {'approved': approved, 'rejected': rejected, 'pending': pending}
+        """Return a dict with counts for approved, rejected, and pending based on OE assigning to College."""
+
+        # Get request IDs where OE assigned next_usertype as College
+        oe_to_college_ids = RequestSubmissionStatusHistory.objects.filter(
+            usertype='OE',
+            next_usertype='College'
+        ).values_list('submission_id', flat=True)
+
+        # Filter requests that have OE -> College assignment
+        filtered_queryset = requests_queryset.filter(id__in=oe_to_college_ids)
+
+        approved = filtered_queryset.filter(status='approved').count()
+        rejected = filtered_queryset.filter(status='rejected').count()
+
+        # Pending requests: not approved or rejected
+        pending = requests_queryset.exclude(status__in=['approved', 'rejected']).count()
+
+        return {
+            'approved': approved,
+            'rejected': rejected,
+            'pending': pending,
+        }
+
+    def get_pending_requests(self, user, user_profile):
+        """Get pending requests not yet processed by the current user's usertype"""
+        usertype = user.usertype
+
+        queryset = RequestSubmission.objects.filter(
+            is_active=True
+        ).exclude(status__in=['approved', 'rejected'])
+
+        # Check if usertype has already processed the request
+        already_seen = RequestSubmissionStatusHistory.objects.filter(
+            submission=OuterRef('pk'),
+            usertype=usertype
+        )
+
+        # Cast JSONField to text for safe string matching
+        queryset = queryset.annotate(
+            already_processed=Exists(already_seen),
+            flow_text=Cast('usertype_flow', TextField())
+        ).filter(
+            Q(flow_text__icontains=f'"{usertype}"') & Q(already_processed=False)
+        )
+
+        if user.is_superuser or usertype in ["director", "OE"]:
+            return queryset
+        elif usertype == "College" and user_profile:
+            return queryset.filter(created_by=user_profile)
+        elif user_profile:
+            return queryset.filter(created_by=user_profile)
+        else:
+            return RequestSubmission.objects.none()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -82,10 +128,10 @@ class HomeView(mixins.HybridTemplateView):
             
             if user.usertype == "College":
                 # Only show requests created by the current College user
-                filtered_requests = requests_queryset.filter(creator=user)
+                filtered_requests = requests_queryset.filter(created_by=user_profile)
             else:
                 filtered_requests = requests_queryset.filter(
-                    Q(creator=user) |
+                    Q(created_by=user_profile) |
                     Q(status_history__submitted_users=user_profile) |
                     Q(status_history__next_usertype=getattr(user, 'usertype', None))
                 ).distinct()
@@ -123,17 +169,15 @@ class HomeView(mixins.HybridTemplateView):
         context['rejected_count'] = status_counts['rejected']
         context['pending_count'] = status_counts['pending']
 
-        # Recent Activity
+        # Recent Activity - show pending requests for better visibility
         if user.usertype == "director" or user.usertype == "OE":
-            director_requests = RequestSubmission.objects.all()
-            director_recent_requests = []
-            for req in director_requests.order_by('-created'):
-                latest_status = req.status_history.order_by('-date').first()
-                if latest_status and (latest_status.usertype == 'director' or latest_status.usertype == 'OE'):
-                    director_recent_requests.append(req)
-                if len(director_recent_requests) >= 5:
-                    break
-            context['recent_requests'] = director_recent_requests
+            # For director and OE, show all requests but prioritize pending ones
+            # Get pending requests first
+            pending_requests = filtered_requests.filter(status__in=['pending', 'forwarded']).order_by('-created')[:5]
+            # Get other requests
+            other_requests = filtered_requests.exclude(status__in=['pending', 'forwarded']).order_by('-created')[:5]
+            # Combine them
+            context['recent_requests'] = list(pending_requests) + list(other_requests)
         else:
             context['recent_requests'] = filtered_requests.order_by('-created')[:5]
         
@@ -170,13 +214,18 @@ class HomeView(mixins.HybridTemplateView):
                 Q(latest_status_user_id=user_profile.id)
             )
             
-            # For College users, only show requests they created
+            # For College users, only show requests they created that are pending
             if user.usertype == "College":
-                assigned_requests = assigned_requests.filter(creator=user)
+                assigned_requests = assigned_requests.filter(created_by=user_profile).exclude(status__in=['approved', 'rejected'])
         else:
             assigned_requests = RequestSubmission.objects.none()
         context['assigned_requests_count'] = assigned_requests.count()
         context['recent_assigned_requests'] = assigned_requests.order_by('-created')[:5]
+
+        # Get pending requests for better visibility
+        pending_requests = self.get_pending_requests(user, user_profile)
+        context['pending_requests'] = pending_requests.count()
+        context['recent_pending_requests'] = pending_requests.order_by('-created')[:5]
 
         # Submitted Requests Count (replace pending_requests with submitted_requests) only for user dashboards
         if user_profile and user.usertype not in ["College", "director"] and not user.is_superuser:
