@@ -154,20 +154,17 @@
                                                 </span>
                                                 <div>
                                                     <h6 class="mb-0 fs-14">{{ request.title|truncatechars:30 }}</h6>
-                                                    {% comment %} <small class="text-muted">{{ request.description|safe|truncatechars:50 }}</small> {% endcomment %}
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            {% with request.status_history.first as latest_status %}
-                                                {% if latest_status.status == 'approved' %}
-                                                    <span class="badge bg-success-transparent">Approved</span>
-                                                {% elif latest_status.status == 'rejected' %}
-                                                    <span class="badge bg-danger-transparent">Rejected</span>
-                                                {% else %}
-                                                    <span class="badge bg-warning-transparent">Pending</span>
-                                                {% endif %}
-                                            {% endwith %}
+                                            {% if request.is_on_hold %}
+                                                <span class="badge bg-info">Processing</span>
+                                            {% elif request.user_has_processed %}
+                                                <span class="badge bg-warning text-white">Pending</span>
+                                            {% else %}
+                                                <span class="badge bg-info text-white">Processing</span>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             <small class="text-muted">{{ request.created|date:"M d, Y" }}</small>
@@ -178,7 +175,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted py-4">
+                                        <td colspan="4" class="text-center text-muted py-4">
                                             <div class="text-center">
                                                 <i class="fe fe-file-text fs-48 text-muted mb-3"></i>
                                                 <h6>No assigned requests</h6>

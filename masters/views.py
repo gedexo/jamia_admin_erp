@@ -38,18 +38,23 @@ class RequestSubmissionListView(mixins.HybridListView):
     permissions = ()
 
     def get_queryset(self):
-        if self.request.user.is_superuser:
+        user = self.request.user
+
+        # ✅ Superuser can see all
+        if user.is_superuser:
             return RequestSubmission.objects.all()
 
         qs = super().get_queryset()
 
+        # ✅ Get user profile
         try:
-            user_profile = UserProfile.objects.get(user=self.request.user)
+            user_profile = UserProfile.objects.get(user=user)
         except UserProfile.DoesNotExist:
             return qs.none()
 
         usertype = user_profile.user.usertype
 
+        # ✅ Check if request is still in processing for usertype
         already_processed = RequestSubmissionStatusHistory.objects.filter(
             submission=OuterRef('pk'),
             usertype=usertype,
@@ -60,26 +65,42 @@ class RequestSubmissionListView(mixins.HybridListView):
             is_processing=~Exists(already_processed)
         )
 
+        # ✅ Start filtering based on usertype
         if usertype == "College":
-            qs = qs.filter(created_by=user_profile)
+            # ✅ Only show requests created by college, excluding processing
+            qs = qs.filter(
+                created_by=user_profile
+            ).exclude(
+                status="processing"
+            )
+
+            # ✅ College can filter only by specific status values
+            status = self.request.GET.get("status", "").lower()
+            if status in ["approved", "rejected", "pending"]:
+                qs = qs.filter(status=status)
+
         else:
+            # ✅ Other users see what’s assigned or submitted by them
             qs = qs.filter(
                 Q(status_history__next_usertype=usertype) |
                 Q(status_history__submitted_users=user_profile)
             ).distinct()
 
-        # ✅ FIXED filtering here
-        status = self.request.GET.get("status", "").lower()
-        if status in ["approved", "rejected"]:
-            oe_to_college_ids = RequestSubmissionStatusHistory.objects.filter(
-                usertype="OE",
-                next_usertype="College"
-            ).values_list('submission_id', flat=True)
+            # ✅ Status filtering for non-college users
+            status = self.request.GET.get("status", "").lower()
+            if status in ["approved", "rejected"]:
+                oe_to_college_ids = RequestSubmissionStatusHistory.objects.filter(
+                    usertype="OE",
+                    next_usertype="College"
+                ).values_list('submission_id', flat=True)
 
-            qs = qs.filter(
-                id__in=oe_to_college_ids,
-                status=status
-            ).distinct()
+                qs = qs.filter(
+                    id__in=oe_to_college_ids,
+                    status=status
+                ).distinct()
+
+            elif status == "processing":
+                qs = qs.filter(status="processing")
 
         return qs
 
@@ -93,6 +114,32 @@ class RequestSubmissionListView(mixins.HybridListView):
         })
         return context
 
+class MyRequestSubmissionListView(mixins.HybridListView):
+    model = RequestSubmission
+    table_class = tables.RequestSubmissionTable
+    filterset_fields = {"title": ["exact"], "college": ["exact"], "status":['exact']}
+    permissions = ()
+
+    def get_queryset(self):
+        user = self.request.user
+        try:
+            user_profile = UserProfile.objects.get(user=user)
+        except UserProfile.DoesNotExist:
+            return RequestSubmission.objects.none()
+        
+        qs = RequestSubmission.objects.filter(created_by=user_profile)
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            "is_master": True,
+            "is_my_request_submission": True,
+            "can_add": False,
+            "new_link": reverse_lazy("masters:request_submission_create")
+        })
+        return context
 
 
 class RequestSubmissionDetailView(mixins.HybridDetailView):
@@ -113,27 +160,25 @@ class RequestSubmissionDetailView(mixins.HybridDetailView):
         except UserProfile.DoesNotExist:
             user_profile = None
 
-        if user_profile and (user_profile.user.usertype == "director" or self.request.user.is_superuser):
-            # Director or superuser sees all status history
-            context["status_history"] = self.object.status_history.all()
+        # 🔽 New Logic
+        is_college_user_of_creator = (
+            self.request.user.usertype == "College"
+            and self.object.college == user_profile.college
+        )
+        context["is_college_user_of_creator"] = is_college_user_of_creator
 
+        if user_profile and (user_profile.user.usertype == "director" or self.request.user.is_superuser):
+            context["status_history"] = self.object.status_history.all()
         elif user_profile:
             usertype = user_profile.user.usertype
-
-            # Get director entries assigned to this usertype
             director_assigned = self.object.status_history.filter(
                 user__user__usertype="director",
                 next_usertype=usertype
             )
-
-            # Get status entries submitted by the current user
             self_submitted = self.object.status_history.filter(
                 user=user_profile
             )
-
-            # Combine both querysets
             context["status_history"] = (director_assigned | self_submitted).distinct().order_by("-date")
-
         else:
             context["status_history"] = []
 
@@ -281,9 +326,11 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
             last_forwarder_to_oe = submission.status_history.filter(next_usertype='OE').order_by('-date').first()
             
             if last_forwarder_to_oe and last_forwarder_to_oe.usertype == 'director':
-                # If the director sent it to OE, send it back to College.
-                # In this case, OE should NOT modify the flow.
-                submission.current_usertype = "College"
+                # If the director sent it to OE, send it back to the creator's usertype.
+                if submission.created_by and submission.created_by.user:
+                    submission.current_usertype = submission.created_by.user.usertype
+                else:
+                    submission.current_usertype = "College"  # fallback if no creator
             else:
                 # Otherwise, this is the primary action for OE: modify the flow and forward it.
                 # Only the OE user can modify the usertype flow in this context.
@@ -368,6 +415,17 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
                     url=submission.get_absolute_url()
                 )
                 notification._request = self.request  # Attach the request for correct domain in email
+                notification.save()
+
+        # Notify the original submitter if the request is fully submitted (no next usertype)
+        if submission.current_usertype is None:
+            if submission.created_by and submission.created_by.user:
+                notification = Notification(
+                    user=submission.created_by.user,
+                    message=f"Your request '{submission.title}' has been fully submitted and processed.",
+                    url=submission.get_absolute_url()
+                )
+                notification._request = self.request
                 notification.save()
 
         return redirect(submission.get_absolute_url())

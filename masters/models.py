@@ -86,7 +86,7 @@ class RequestSubmission(BaseModel):
         ).exists()
 
     def get_list_url(self):
-        return reverse_lazy("masters:request_submission_list")
+        return reverse_lazy("masters:my_request_submission_list")
 
     def get_absolute_url(self):
         return reverse_lazy("masters:request_submission_detail", kwargs={"pk": self.pk})

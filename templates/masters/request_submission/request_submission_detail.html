@@ -33,7 +33,7 @@
     </div>
 
     <!-- Status Card Section -->
-    {% if request.user.usertype == "College" %}
+    {% if is_college_user_of_creator or request.user == object.creator %}
       <div class="status-section mb-5">
         <div class="status-container">
           <div class="status-icon">
@@ -41,31 +41,25 @@
           </div>
           <div class="status-content">
             <h2 class="status-title">
-              {% if object.status == 'approved' and object.current_usertype == 'College' %}
+              {% if object.status == 'approved' %}
                 Request Approved
-              {% elif object.status == 'rejected' and object.current_usertype == 'College' %}
+              {% elif object.status == 'rejected' %}
                 Request Rejected
               {% else %}
                 Request Under Review
               {% endif %}
             </h2>
             <p class="status-subtitle">
-              {% if object.status == 'approved' and object.current_usertype == 'College' %}
+              {% if object.status == 'approved' %}
                 Your submission has been approved.
-              {% elif object.status == 'rejected' and object.current_usertype == 'College' %}
+              {% elif object.status == 'rejected' %}
                 Your submission has been rejected.
               {% else %}
                 Your submission is currently under review and being processed.
               {% endif %}
             </p>
-            {% if object.status == 'approved' and object.current_usertype == 'College' %}
-              <div class="status-actions">
-                <a href="{% url 'masters:request_submission_pdf' object.pk %}" target="_blank" class="pdf-view-btn">
-                  <i class="fe fe-file-text"></i>
-                  <span>View PDF</span>
-                </a>
-              </div>
-            {% elif object.status == 'rejected' and object.current_usertype == 'College' %}
+
+            {% if object.status in 'approved rejected' %}
               <div class="status-actions">
                 <a href="{% url 'masters:request_submission_pdf' object.pk %}" target="_blank" class="pdf-view-btn">
                   <i class="fe fe-file-text"></i>
@@ -253,32 +247,43 @@
   document.addEventListener("DOMContentLoaded", function () {
     // === Status Animation ===
     const container = document.getElementById('statusAnimation');
-    if (container) {
-      const isCollege = '{{ request.user.usertype }}' === 'College';
-      const isApproved = '{{ object.status }}' === 'approved';
-      const isRejected = '{{ object.status }}' === 'rejected';
-      const isCurrentCollege = '{{ object.current_usertype }}' === 'College';
+
+    const userType = '{{ request.user.usertype }}';
+    const userId = '{{ request.user.id }}';
+    const creatorId = '{{ object.created_by.id }}';
+    const status = '{{ object.status }}';
+    const currentUsertype = '{{ object.current_usertype }}';
+
+    const isCollege = userType === 'College';
+    const isCRO = userType === 'CRO';
+    const isCreator = userId === creatorId;
+    const isAuthorizedViewer = true;
+
+    if (container && isAuthorizedViewer) {
       let animationPath = '';
-      if (isCollege && isApproved && isCurrentCollege) {
-        animationPath = '{% static 'app/assets/animation/success.json' %}';
-      } else if (isCollege && isRejected && isCurrentCollege) {
-        animationPath = '{% static 'app/assets/animation/rejection.json' %}';
+      if (status === 'approved') {
+        animationPath = '{% static "app/assets/animation/success.json" %}';
+      } else if (status === 'rejected') {
+        animationPath = '{% static "app/assets/animation/rejection.json" %}';
       } else {
-        animationPath = '{% static 'app/assets/animation/timing.json' %}';
+        animationPath = '{% static "app/assets/animation/timing.json" %}';
       }
+
       const animation = lottie.loadAnimation({
         container: container,
         renderer: 'svg',
-        loop: (isCollege && (isApproved || isRejected) && isCurrentCollege) ? false : true,
+        loop: !(status === 'approved' || status === 'rejected'),
         autoplay: true,
         path: animationPath
       });
+
       container.style.width = '100%';
       container.style.height = '100%';
+
       animation.addEventListener('data_failed', function () {
-        if (isCollege && isApproved && isCurrentCollege) {
+        if (status === 'approved') {
           container.innerHTML = '<i class="fe fe-check-circle animation-fallback"></i>';
-        } else if (isCollege && isRejected && isCurrentCollege) {
+        } else if (status === 'rejected') {
           container.innerHTML = '<i class="fe fe-x-circle animation-fallback"></i>';
         } else {
           container.innerHTML = '<i class="fe fe-clock animation-fallback"></i>';
@@ -286,7 +291,7 @@
       });
     }
 
-    // === Bootstrap Modal (No manual creation) ===
+    // === Bootstrap Modal (Remarks) ===
     const remarkModalEl = document.getElementById('remarkModal');
     const remarkModal = new bootstrap.Modal(remarkModalEl);
 
@@ -318,7 +323,7 @@
       });
     });
 
-    // Optional: remove leftover backdrops if any from old scripts
+    // Cleanup any leftover backdrops
     document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
   });
 </script>
@@ -443,10 +448,10 @@
 
   /* Status Section */
   .status-section {
-    background: linear-gradient(135deg, {% if object.status == "approved" and object.current_usertype == "College" %}#f0fdf4{% elif object.status == "rejected" and object.current_usertype == "College" %}#fef2f2{% else %}#eff6ff{% endif %} 0%, {% if object.status == "approved" and object.current_usertype == "College" %}#ecfdf5{% elif object.status == "rejected" and object.current_usertype == "College" %}#fef7f7{% else %}#dbeafe{% endif %} 100%);
+    background: linear-gradient(135deg, {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#f0fdf4{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#fef2f2{% else %}#eff6ff{% endif %} 0%, {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#ecfdf5{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#fef7f7{% else %}#dbeafe{% endif %} 100%);
     border-radius: 16px;
     padding: 2rem;
-    border: 1px solid {% if object.status == "approved" and object.current_usertype == "College" %}#dcfce7{% elif object.status == "rejected" and object.current_usertype == "College" %}#fecaca{% else %}#bfdbfe{% endif %};
+    border: 1px solid {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#dcfce7{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#fecaca{% else %}#bfdbfe{% endif %};
   }
   
   .status-container {
@@ -460,11 +465,11 @@
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background: {% if object.status == "approved" and object.current_usertype == "College" %}#10b981{% elif object.status == "rejected" and object.current_usertype == "College" %}#ef4444{% else %}#3b82f6{% endif %};
+    background: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#10b981{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#ef4444{% else %}#3b82f6{% endif %};
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px {% if object.status == "approved" and object.current_usertype == "College" %}rgba(16, 185, 129, 0.25){% elif object.status == "rejected" and object.current_usertype == "College" %}rgba(239, 68, 68, 0.25){% else %}rgba(59, 130, 246, 0.25){% endif %};
+    box-shadow: 0 4px 12px {% if object.status == "approved" and object.current_usertype == request.user.usertype %}rgba(16, 185, 129, 0.25){% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}rgba(239, 68, 68, 0.25){% else %}rgba(59, 130, 246, 0.25){% endif %};
   }
   
   .animation-container {
@@ -488,14 +493,14 @@
   .status-title {
     font-size: 1.5rem;
     font-weight: 600;
-    color: {% if object.status == "approved" and object.current_usertype == "College" %}#065f46{% elif object.status == "rejected" and object.current_usertype == "College" %}#991b1b{% else %}#1e40af{% endif %};
+    color: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#065f46{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#991b1b{% else %}#1e40af{% endif %};
     margin: 0 0 0.5rem 0;
     line-height: 1.3;
   }
   
   .status-subtitle {
     font-size: 0.9375rem;
-    color: {% if object.status == "approved" and object.current_usertype == "College" %}#047857{% elif object.status == "rejected" and object.current_usertype == "College" %}#dc2626{% else %}#2563eb{% endif %};
+    color: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#047857{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#dc2626{% else %}#2563eb{% endif %};
     margin: 0 0 1rem 0;
     line-height: 1.5;
     opacity: 0.9;
@@ -503,11 +508,11 @@
   
   .status-remark {
     background: white;
-    border: 1px solid {% if object.status == "approved" and object.current_usertype == "College" %}#bbf7d0{% elif object.status == "rejected" and object.current_usertype == "College" %}#fca5a5{% else %}#93c5fd{% endif %};
+    border: 1px solid {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#bbf7d0{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#fca5a5{% else %}#93c5fd{% endif %};
     border-radius: 8px;
     padding: 1rem;
     font-size: 0.875rem;
-    color: {% if object.status == "approved" and object.current_usertype == "College" %}#065f46{% elif object.status == "rejected" and object.current_usertype == "College" %}#991b1b{% else %}#1e40af{% endif %};
+    color: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#065f46{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#991b1b{% else %}#1e40af{% endif %};
     line-height: 1.5;
   }
   
@@ -522,9 +527,9 @@
     gap: 0.5rem;
     padding: 0.625rem 1rem;
     background: white;
-    border: 1px solid {% if object.status == "approved" and object.current_usertype == "College" %}#10b981{% elif object.status == "rejected" and object.current_usertype == "College" %}#ef4444{% else %}#3b82f6{% endif %};
+    border: 1px solid {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#10b981{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#ef4444{% else %}#3b82f6{% endif %};
     border-radius: 8px;
-    color: {% if object.status == "approved" and object.current_usertype == "College" %}#10b981{% elif object.status == "rejected" and object.current_usertype == "College" %}#ef4444{% else %}#3b82f6{% endif %};
+    color: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#10b981{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#ef4444{% else %}#3b82f6{% endif %};
     text-decoration: none;
     font-size: 0.875rem;
     font-weight: 500;
@@ -533,11 +538,11 @@
   }
   
   .pdf-view-btn:hover {
-    background: {% if object.status == "approved" and object.current_usertype == "College" %}#10b981{% elif object.status == "rejected" and object.current_usertype == "College" %}#ef4444{% else %}#3b82f6{% endif %};
+    background: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#10b981{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#ef4444{% else %}#3b82f6{% endif %};
     color: white;
     text-decoration: none;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px {% if object.status == "approved" and object.current_usertype == "College" %}rgba(16, 185, 129, 0.3){% elif object.status == "rejected" and object.current_usertype == "College" %}rgba(239, 68, 68, 0.3){% else %}rgba(59, 130, 246, 0.3){% endif %};
+    box-shadow: 0 4px 12px {% if object.status == "approved" and object.current_usertype == request.user.usertype %}rgba(16, 185, 129, 0.3){% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}rgba(239, 68, 68, 0.3){% else %}rgba(59, 130, 246, 0.3){% endif %};
   }
   
   .pdf-view-btn i {

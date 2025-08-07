@@ -50,7 +50,25 @@
                 <li class="slide ">
                     <a href="{% url 'masters:request_submission_list' %}" class="side-menu__item {% if is_request_submission %}active{% endif %}">
                         <i class="la la-list side-menu__icon"></i>
-                        <span class="side-menu__label">Request Submission</span>
+                        <span class="side-menu__label">Request Submission List</span>
+                    </a>
+                </li>
+            <!-- End::slide -->
+
+            <!-- Start::slide -->
+                <li class="slide ">
+                    <a href="{% url 'masters:request_submission_create' %}" class="side-menu__item {% if is_request_submission_form %}active{% endif %}">
+                        <i class="la la-clipboard side-menu__icon"></i>
+                        <span class="side-menu__label">Request Submission Form</span>
+                    </a>
+                </li>
+            <!-- End::slide -->
+
+            <!-- Start::slide -->
+                <li class="slide ">
+                    <a href="{% url 'masters:my_request_submission_list' %}" class="side-menu__item {% if is_request_submission_form %}active{% endif %}">
+                        <i class="la la-list side-menu__icon"></i>
+                        <span class="side-menu__label">My Request Submission List</span>
                     </a>
                 </li>
             <!-- End::slide -->
