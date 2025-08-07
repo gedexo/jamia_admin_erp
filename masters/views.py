@@ -58,7 +58,7 @@ class RequestSubmissionListView(mixins.HybridListView):
         )
 
         qs = qs.annotate(
-            is_processing=~Exists(already_processed)  # True if NOT processed
+            is_processing=~Exists(already_processed)  
         )
 
         if usertype == "College":
