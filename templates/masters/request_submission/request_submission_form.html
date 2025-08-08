@@ -42,7 +42,6 @@
                                   </div>
                                 {% endif %}
                                 <div class="row">
-                                    {% comment %} {{ form|crispy }} {% endcomment %}
                                     {% if not object %}
                                         <div class="mb-3 col-lg-4 col-sm-12 col-md-6">
                                             {{ form.title|as_crispy_field }}
@@ -57,6 +56,41 @@
                                         </div>
                                     {% endif %}
                                 </div>
+
+                                <!-- Add usertype flow selection for OE users during creation -->
+                                {% if request.user.usertype == "OE" and not object and available_flow_usertypes %}
+                                <div class="row">
+                                    <div class="mb-3 col-lg-8">
+                                        <label class="form-label mb-2">Approval Flow</label>
+                                        <div class="usertype-flow-minimal d-flex align-items-center flex-wrap mb-2" style="gap: 0.5rem;">
+                                            <span class="usertype-pill fixed">Office Executive</span>
+                                            <span class="usertype-arrow">&#8594;</span>
+                                            {% for val in form.usertype_flow.value %}
+                                                <span class="usertype-pill usertype-middle position-relative" data-key="{{ val }}">
+                                                    {% for v, lbl in available_flow_usertypes %}
+                                                        {% if v == val %}{{ lbl }}{% endif %}
+                                                    {% endfor %}
+                                                    <button type="button" class="remove-middle-usertype" data-key="{{ val }}" title="Remove" tabindex="-1">&times;</button>
+                                                </span>
+                                                <span class="usertype-arrow">&#8594;</span>
+                                            {% endfor %}
+                                            <span class="usertype-pill fixed">Director</span>
+                                        </div>
+                                        <div class="input-group input-group-sm" style="max-width: 320px;">
+                                            <select id="usertype-add-select" class="form-select" style="min-width: 140px;">
+                                                <option value="">Add usertype...</option>
+                                                {% for value, label in available_flow_usertypes %}
+                                                    {% if not form.usertype_flow.value or value not in form.usertype_flow.value %}
+                                                        <option value="{{ value }}">{{ label }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                            <button type="button" id="add-usertype-btn" class="btn btn-outline-primary px-3">+ Add</button>
+                                        </div>
+                                        <input type="hidden" name="usertype_flow" id="usertype_flow_input" value="{{ form.usertype_flow.value|join:',' }}">
+                                    </div>
+                                </div>
+                                {% endif %}
 
                                 <div class="row">
                                     {% if form.status %}
@@ -90,7 +124,6 @@
                                             </select>
                                         </div>
                                     {% endif %}
-
                                 </div>
 
                                 <div class="row">
@@ -99,7 +132,7 @@
                                             {{ form.alternative_description|as_crispy_field }}
                                         </div>
                                     {% endif %}
-                                    {% if request.user.usertype == "OE" and not form.remark %}
+                                    {% if request.user.usertype == "OE" and not form.remark and object %}
                                         <!-- Minimalistic Editable Flow UI: Only user-added usertypes + fixed Director at end -->
                                         <div class="mb-3 col-lg-8">
                                             <label class="form-label mb-2">Usertype Flow</label>
@@ -146,15 +179,11 @@
                             </form>
                             </div>
                         </div>
-                      
-                        
                     </div>
-                    
                 </div>
             </div>
         </div>
         <!--End::row-1 -->
-
     </div>
 </div>
 
@@ -229,105 +258,202 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     // --- End prevent multiple submits ---
-    // Initial user-added usertypes (middle section)
-    const initialUserFlow = [{% for key in form.user_flow.value %}'{{ key }}',{% endfor %}];
-    const usertypeChoices = [
-        {% for value, label in usertype_choices %}
-            { value: '{{ value }}', label: '{{ label }}' },
-        {% endfor %}
-    ];
-    let middleUsertypes = [...initialUserFlow];
-    function updateFlowChart() {
-        // Update hidden inputs
-        const hiddenInputsDiv = document.getElementById('user_flow_hidden_inputs');
-        hiddenInputsDiv.innerHTML = '';
-        middleUsertypes.forEach(val => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'user_flow';
-            input.value = val;
-            hiddenInputsDiv.appendChild(input);
-        });
-        // Update pills
+
+    // Handle usertype flow for OE during creation
+    if (document.getElementById('usertype-add-select') && document.getElementById('usertype_flow_input')) {
+        const usertypeSelect = document.getElementById('usertype-add-select');
+        const addBtn = document.getElementById('add-usertype-btn');
         const flowDiv = document.querySelector('.usertype-flow-minimal');
-        if (flowDiv) {
-            // Remove all middle usertype pills and arrows
-            flowDiv.querySelectorAll('.usertype-pill.usertype-middle').forEach(el => el.remove());
-            flowDiv.querySelectorAll('.usertype-arrow.middle-arrow').forEach(el => el.remove());
-            // Insert middle usertypes and arrows before Director
-            const directorPill = flowDiv.querySelector('.usertype-pill.fixed');
+        const hiddenInput = document.getElementById('usertype_flow_input');
+        
+        // Initialize with any existing values
+        let selectedUsertypes = [];
+        if (hiddenInput.value) {
+            selectedUsertypes = hiddenInput.value.split(',');
+        }
+        
+        function updateFlowDisplay() {
+            // Update the hidden input value
+            hiddenInput.value = selectedUsertypes.join(',');
+            
+            // Update the visual flow display
+            const middlePills = flowDiv.querySelectorAll('.usertype-pill.usertype-middle');
+            const arrows = flowDiv.querySelectorAll('.usertype-arrow:not(:first-child)');
+            
+            // Remove existing middle pills and extra arrows
+            middlePills.forEach(pill => pill.remove());
+            arrows.forEach(arrow => arrow.remove());
+            
+            // Add the selected usertypes to the flow
+            const directorPill = flowDiv.querySelector('.usertype-pill.fixed:last-child');
             let insertBefore = directorPill;
-            middleUsertypes.forEach((usertype, idx) => {
-                // Only insert arrow if not the first usertype
-                if (idx > 0) {
+            
+            selectedUsertypes.forEach((usertype, index) => {
+                // Find the label for this usertype
+                let label = '';
+                for (let i = 0; i < usertypeSelect.options.length; i++) {
+                    if (usertypeSelect.options[i].value === usertype) {
+                        label = usertypeSelect.options[i].text;
+                        break;
+                    }
+                }
+                
+                // Add arrow before each usertype (except first)
+                if (index > 0) {
+                    const arrow = document.createElement('span');
+                    arrow.className = 'usertype-arrow';
+                    arrow.innerHTML = '&#8594;';
+                    flowDiv.insertBefore(arrow, insertBefore);
+                }
+                
+                // Add the usertype pill
+                const pill = document.createElement('span');
+                pill.className = 'usertype-pill usertype-middle position-relative';
+                pill.setAttribute('data-key', usertype);
+                pill.innerHTML = label + 
+                    '<button type="button" class="remove-middle-usertype" data-key="' + usertype + 
+                    '" title="Remove" tabindex="-1">&times;</button>';
+                
+                // Add remove handler
+                pill.querySelector('.remove-middle-usertype').addEventListener('click', function() {
+                    const key = this.getAttribute('data-key');
+                    selectedUsertypes = selectedUsertypes.filter(u => u !== key);
+                    updateFlowDisplay();
+                    // Re-enable this option in the dropdown
+                    for (let i = 0; i < usertypeSelect.options.length; i++) {
+                        if (usertypeSelect.options[i].value === key) {
+                            usertypeSelect.options[i].disabled = false;
+                            break;
+                        }
+                    }
+                });
+                
+                flowDiv.insertBefore(pill, insertBefore);
+            });
+            
+            // Add final arrow before director if there are selected usertypes
+            if (selectedUsertypes.length > 0) {
+                const arrow = document.createElement('span');
+                arrow.className = 'usertype-arrow';
+                arrow.innerHTML = '&#8594;';
+                flowDiv.insertBefore(arrow, directorPill);
+            }
+        }
+        
+        // Handle adding new usertypes
+        addBtn.addEventListener('click', function() {
+            const selectedValue = usertypeSelect.value;
+            if (selectedValue && !selectedUsertypes.includes(selectedValue)) {
+                selectedUsertypes.push(selectedValue);
+                updateFlowDisplay();
+                // Disable the selected option in the dropdown
+                usertypeSelect.options[usertypeSelect.selectedIndex].disabled = true;
+                usertypeSelect.value = '';
+            }
+        });
+        
+        // Initialize the display
+        updateFlowDisplay();
+    }
+
+    // Handle usertype flow for OE during update (existing code)
+    if (document.getElementById('user_flow_hidden_inputs')) {
+        // Initial user-added usertypes (middle section)
+        const initialUserFlow = [{% for key in form.user_flow.value %}'{{ key }}',{% endfor %}];
+        const usertypeChoices = [
+            {% for value, label in usertype_choices %}
+                { value: '{{ value }}', label: '{{ label }}' },
+            {% endfor %}
+        ];
+        let middleUsertypes = [...initialUserFlow];
+        
+        function updateFlowChart() {
+            // Update hidden inputs
+            const hiddenInputsDiv = document.getElementById('user_flow_hidden_inputs');
+            hiddenInputsDiv.innerHTML = '';
+            middleUsertypes.forEach(val => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'user_flow';
+                input.value = val;
+                hiddenInputsDiv.appendChild(input);
+            });
+            // Update pills
+            const flowDiv = document.querySelector('.usertype-flow-minimal');
+            if (flowDiv) {
+                // Remove all middle usertype pills and arrows
+                flowDiv.querySelectorAll('.usertype-pill.usertype-middle').forEach(el => el.remove());
+                flowDiv.querySelectorAll('.usertype-arrow.middle-arrow').forEach(el => el.remove());
+                // Insert middle usertypes and arrows before Director
+                const directorPill = flowDiv.querySelector('.usertype-pill.fixed');
+                let insertBefore = directorPill;
+                middleUsertypes.forEach((usertype, idx) => {
+                    // Only insert arrow if not the first usertype
+                    if (idx > 0) {
+                        const arrow = document.createElement('span');
+                        arrow.className = 'usertype-arrow middle-arrow';
+                        arrow.innerHTML = '&#8594;';
+                        insertBefore.parentNode.insertBefore(arrow, insertBefore);
+                    }
+                    // Pill
+                    const label = usertypeChoices.find(u => u.value === usertype)?.label || usertype;
+                    const pill = document.createElement('span');
+                    pill.className = 'usertype-pill usertype-middle position-relative';
+                    pill.setAttribute('data-key', usertype);
+                    pill.innerText = label;
+                    // Remove button
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'remove-middle-usertype';
+                    btn.setAttribute('data-key', usertype);
+                    btn.title = 'Remove';
+                    btn.tabIndex = -1;
+                    btn.innerHTML = '&times;';
+                    btn.onclick = function () {
+                        middleUsertypes.splice(idx, 1);
+                        updateFlowChart();
+                    };
+                    pill.appendChild(btn);
+                    insertBefore.parentNode.insertBefore(pill, insertBefore);
+                });
+                // Only insert arrow before Director if there is at least one usertype
+                if (middleUsertypes.length > 0) {
                     const arrow = document.createElement('span');
                     arrow.className = 'usertype-arrow middle-arrow';
                     arrow.innerHTML = '&#8594;';
                     insertBefore.parentNode.insertBefore(arrow, insertBefore);
                 }
-                // Pill
-                const label = usertypeChoices.find(u => u.value === usertype)?.label || usertype;
-                const pill = document.createElement('span');
-                pill.className = 'usertype-pill usertype-middle position-relative';
-                pill.setAttribute('data-key', usertype);
-                pill.innerText = label;
-                // Remove button
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'remove-middle-usertype';
-                btn.setAttribute('data-key', usertype);
-                btn.title = 'Remove';
-                btn.tabIndex = -1;
-                btn.innerHTML = '&times;';
-                btn.onclick = function () {
-                    middleUsertypes.splice(idx, 1);
-                    updateFlowChart();
-                };
-                pill.appendChild(btn);
-                insertBefore.parentNode.insertBefore(pill, insertBefore);
-            });
-            // Only insert arrow before Director if there is at least one usertype
-            if (middleUsertypes.length > 0) {
-                const arrow = document.createElement('span');
-                arrow.className = 'usertype-arrow middle-arrow';
-                arrow.innerHTML = '&#8594;';
-                insertBefore.parentNode.insertBefore(arrow, insertBefore);
             }
         }
+        updateFlowChart();
+        // Add usertype
+        const addBtn = document.getElementById('add-usertype-btn');
+        if (addBtn) {
+            addBtn.onclick = function () {
+                const select = document.getElementById('usertype-add-select');
+                const val = select.value;
+                if (val && !middleUsertypes.includes(val)) {
+                    middleUsertypes.push(val);
+                    updateFlowChart();
+                    select.value = '';
+                }
+            };
+        }
     }
-    updateFlowChart();
-    // Add usertype
-    const addBtn = document.getElementById('add-usertype-btn');
-    if (addBtn) {
-        addBtn.onclick = function () {
-            const select = document.getElementById('usertype-add-select');
-            const val = select.value;
-            if (val && !middleUsertypes.includes(val)) {
-                middleUsertypes.push(val);
-                updateFlowChart();
-                select.value = '';
+
+    // Re-assign functionality
+    const reAssignSelect = document.getElementById("re_assign");
+    const usertypeWrapper = document.getElementById("reassign_usertype_wrapper");
+
+    if (reAssignSelect) {
+        reAssignSelect.addEventListener("change", function () {
+            if (this.value === "yes") {
+                usertypeWrapper.style.display = "block";
+            } else {
+                usertypeWrapper.style.display = "none";
             }
-        };
+        });
     }
 });
 </script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const reAssignSelect = document.getElementById("re_assign");
-        const usertypeWrapper = document.getElementById("reassign_usertype_wrapper");
-    
-        if (reAssignSelect) {
-            reAssignSelect.addEventListener("change", function () {
-                if (this.value === "yes") {
-                    usertypeWrapper.style.display = "block";
-                } else {
-                    usertypeWrapper.style.display = "none";
-                }
-            });
-        }
-    });
-</script>
-
-
 {% endblock %}

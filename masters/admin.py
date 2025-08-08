@@ -8,7 +8,7 @@ class RequestSubmissionTypeAdmin(admin.ModelAdmin):
 @admin.register(RequestSubmission)
 class RequestSubmissionAdmin(admin.ModelAdmin):
     list_display = ['title', 'current_usertype', 'created_by']
-    list_filter = ['current_usertype']
+    list_filter = ['current_usertype', 'created_by', 'status', 'is_active']
     search_fields = ['title', 'description']
 
 @admin.register(RequestSubmissionStatusHistory)

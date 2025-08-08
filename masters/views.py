@@ -1,5 +1,6 @@
 import sys
 from django.template.loader import render_to_string
+from django.forms import MultipleChoiceField, MultipleHiddenInput
 from django import forms
 from weasyprint import HTML, CSS
 from django.templatetags.static import static
@@ -11,7 +12,7 @@ from django.shortcuts import redirect
 from core import mixins
 from . import tables
 from . import forms
-from django.db.models import Q, Exists, OuterRef
+from django.db.models import OuterRef, Exists, Subquery, Max, Q
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from core.choices import USERTYPE_CHOICES, REQUEST_SUBMISSION_STATUS_CHOICES
@@ -40,13 +41,12 @@ class RequestSubmissionListView(mixins.HybridListView):
     def get_queryset(self):
         user = self.request.user
 
-        # ✅ Superuser can see all
+        # Superuser can see all
         if user.is_superuser:
             return RequestSubmission.objects.all()
 
         qs = super().get_queryset()
 
-        # ✅ Get user profile
         try:
             user_profile = UserProfile.objects.get(user=user)
         except UserProfile.DoesNotExist:
@@ -54,39 +54,36 @@ class RequestSubmissionListView(mixins.HybridListView):
 
         usertype = user_profile.user.usertype
 
-        # ✅ Check if request is still in processing for usertype
+        # Annotate processing status
         already_processed = RequestSubmissionStatusHistory.objects.filter(
             submission=OuterRef('pk'),
             usertype=usertype,
             submitted_users=user_profile
         )
-
         qs = qs.annotate(
             is_processing=~Exists(already_processed)
         )
 
-        # ✅ Start filtering based on usertype
-        if usertype == "College":
-            # ✅ Only show requests created by college, excluding processing
-            qs = qs.filter(
-                created_by=user_profile
-            ).exclude(
-                status="processing"
-            )
+        # Exclude requests created by logged-in user
+        qs = qs.exclude(created_by=user_profile)
 
-            # ✅ College can filter only by specific status values
+        if usertype == "College":
+            # Show requests NOT created by this college user, excluding processing
+            qs = qs.exclude(status="processing")
+
+            # Filter by status if provided (approved, rejected, pending)
             status = self.request.GET.get("status", "").lower()
             if status in ["approved", "rejected", "pending"]:
                 qs = qs.filter(status=status)
 
         else:
-            # ✅ Other users see what’s assigned or submitted by them
+            # Other users see requests assigned to or submitted by them, excluding their own created
             qs = qs.filter(
                 Q(status_history__next_usertype=usertype) |
                 Q(status_history__submitted_users=user_profile)
             ).distinct()
 
-            # ✅ Status filtering for non-college users
+            # Status filter for non-college
             status = self.request.GET.get("status", "").lower()
             if status in ["approved", "rejected"]:
                 oe_to_college_ids = RequestSubmissionStatusHistory.objects.filter(
@@ -114,22 +111,39 @@ class RequestSubmissionListView(mixins.HybridListView):
         })
         return context
 
+
 class MyRequestSubmissionListView(mixins.HybridListView):
     model = RequestSubmission
-    table_class = tables.RequestSubmissionTable
-    filterset_fields = {"title": ["exact"], "college": ["exact"], "status":['exact']}
+    table_class = tables.MyRequestSubmissionTable
+    filterset_fields = {"title": ["exact"], "college": ["exact"], "status": ['exact']}
     permissions = ()
 
     def get_queryset(self):
         user = self.request.user
+        usertype = user.usertype
+
         try:
             user_profile = UserProfile.objects.get(user=user)
         except UserProfile.DoesNotExist:
             return RequestSubmission.objects.none()
-        
+
         qs = RequestSubmission.objects.filter(created_by=user_profile)
 
-        return qs
+        return qs.annotate(
+            oe_assigned_to_me=Exists(
+                RequestSubmissionStatusHistory.objects.filter(
+                    submission=OuterRef("pk"),
+                    usertype="OE",
+                    next_usertype=usertype
+                )
+            ),
+            submitted_by_me=Exists(
+                RequestSubmissionStatusHistory.objects.filter(
+                    submission=OuterRef("pk"),
+                    submitted_users=user_profile
+                )
+            )
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -160,7 +174,6 @@ class RequestSubmissionDetailView(mixins.HybridDetailView):
         except UserProfile.DoesNotExist:
             user_profile = None
 
-        # 🔽 New Logic
         is_college_user_of_creator = (
             self.request.user.usertype == "College"
             and self.object.college == user_profile.college
@@ -198,51 +211,102 @@ class RequestSubmissionCreateView(mixins.HybridCreateView):
         context = super().get_context_data(**kwargs)
         context["title"] = "New Request Submission"
         context["is_request_submission_form"] = True
+        context['current_usertype'] = self.request.user.usertype
+        
+        if self.request.user.usertype == "OE":
+            usertype_choices = list(USERTYPE_CHOICES)
+            excluded_usertypes = ['College', 'OE', 'director']
+            context['available_flow_usertypes'] = [
+                (value, label) for value, label in usertype_choices 
+                if value not in excluded_usertypes
+            ]
+            # Initialize usertype_flow in form
+            if 'form' not in context or context['form'] is None:
+                context['form'] = self.get_form()
+            context['form'].fields['usertype_flow'].initial = []
+        
         return context
 
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
+        user_usertype = self.request.user.usertype
         allowed_fields = ['title', 'description', 'attachment']
+
+        if user_usertype == "OE":
+            # Add usertype_flow field for OE users
+            form.fields['usertype_flow'] = MultipleChoiceField(
+                choices=[(v, l) for v, l in USERTYPE_CHOICES if v not in ['College', 'OE', 'director']],
+                required=False,
+                widget=MultipleHiddenInput()
+            )
+            allowed_fields.append('usertype_flow')
+
+        # Remove fields not in allowed_fields
         for field_name in list(form.fields):
             if field_name not in allowed_fields:
                 del form.fields[field_name]
+
         return form
 
     @transaction.atomic
     def form_valid(self, form):
         user_profile = UserProfile.objects.get(user=self.request.user)
-
         form.instance.college = user_profile
         form.instance.current_usertype = user_profile.user.usertype
-        form.instance.usertype_flow = [user_profile.user.usertype, "OE"]
         form.instance.created_by = user_profile
-        form.instance.status = 'pending'
+
+        if user_profile.user.usertype == "OE":
+            # Get the selected usertypes from form data
+            selected_usertypes = self.request.POST.getlist('usertype_flow', [])
+            
+            # Build the full flow: OE -> selected usertypes -> director
+            full_flow = ["OE"]
+            if selected_usertypes:
+                full_flow.extend(selected_usertypes)
+            full_flow.append("director")
+            
+            form.instance.usertype_flow = full_flow
+            form.instance.status = "pending"
+            
+            # Set next usertype in flow
+            if len(full_flow) > 1:
+                form.instance.current_usertype = full_flow[1]
+        else:
+            # For other usertypes (e.g. College), keep existing fixed flow
+            form.instance.usertype_flow = [user_profile.user.usertype, "OE"]
+            form.instance.status = "pending"
+            form.instance.current_usertype = "OE"
+
         response = super().form_valid(form)
 
+        # Create initial status history
+        next_usertype = form.instance.usertype_flow[1] if len(form.instance.usertype_flow) > 1 else ""
         RequestSubmissionStatusHistory.objects.create(
             submission=form.instance,
             user=user_profile,
             usertype=user_profile.user.usertype,
-            next_usertype='OE', 
+            next_usertype=next_usertype,
             status='pending',
-            remark='College assigned the request directly to OE.'
+            remark=f"{user_profile.user.usertype} created the request."
         )
-        
-        oe_profiles = UserProfile.objects.filter(user__usertype='OE')
-        for oe in oe_profiles:
-            notification = Notification(
-                user=oe.user,
-                message=f"Request assigned: {form.instance.title}",
-                url=form.instance.get_absolute_url()
-            )
-            notification._request = self.request  # Attach the request for correct domain in email
-            notification.save()
+
+        # Send notifications if needed
+        if form.instance.current_usertype:
+            next_profiles = UserProfile.objects.filter(user__usertype=form.instance.current_usertype)
+            for profile in next_profiles:
+                notification = Notification(
+                    user=profile.user,
+                    message=f"New request assigned: {form.instance.title}",
+                    url=form.instance.get_absolute_url()
+                )
+                notification._request = self.request
+                notification.save()
 
         return response
 
     def get_success_url(self):
-        return reverse_lazy('masters:request_submission_list')
-
+        return reverse_lazy('masters:my_request_submission_list')
+    
 
 class RequestStatusUpdateView(mixins.HybridUpdateView):
     model = RequestSubmission
@@ -264,21 +328,16 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Always provide the full list of usertypes for the 'Add Usertype' dropdown
         context['usertype_choices'] = USERTYPE_CHOICES
-        # When a director is viewing, provide the specific choices for re-assignment
         if self.request.user.usertype == 'director' and hasattr(self.object, 'usertype_flow'):
             usertype_labels = dict(USERTYPE_CHOICES)
-            # Use usertype_flow from the instance
             flow = self.object.usertype_flow or []
-            # Prepare choices for re-assign dropdown, excluding director
             reassign_choices = [
                 (key, usertype_labels.get(key, key))
                 for key in flow
                 if key != 'director'
             ]
             context['reassign_usertype_choices'] = reassign_choices
-        # Add next_usertype for template usage
         context['next_usertype'] = self.get_next_usertype(self.object, self.request.user.usertype)
         return context
 
@@ -295,77 +354,65 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
         submission = form.instance
         current_usertype = user_profile.user.usertype
         reassign_to = self.request.POST.get("reassign_usertype")
-            
         remark = form.cleaned_data.get("remark")
 
-        # Priority 2: Handle all other cases for different usertypes
         if current_usertype == "director":
             if reassign_to:
-                # Director is re-assigning. Set the next user and create a temporary flow.
                 flow = submission.usertype_flow or []
-                flow.append(reassign_to)
-                # Ensure 'director' is next after the re-assigned usertype
-                if not flow or flow[-1] != "director":
-                    flow.append("director")
+                if flow and flow[-1] == "director":
+                    if reassign_to not in flow:
+                        flow.insert(-1, reassign_to)
+                else:
+                    if reassign_to not in flow:
+                        flow.append(reassign_to)
                 submission.usertype_flow = flow
                 submission.current_usertype = reassign_to
             else:
-                # Director is forwarding normally. Set next user to OE.
                 submission.current_usertype = "OE"
-                # Record this action in the main flow.
                 flow = submission.usertype_flow or []
-                flow.append("OE")
+                if "OE" not in flow:
+                    flow.append("OE")
+                if "director" not in flow:
+                    flow.append("director")
                 submission.usertype_flow = flow
 
         elif current_usertype == "OE":
-            # Handle OE's first submission (with default remark)
             if submission.status_history.filter(usertype="OE").count() == 0:
-                remark = "Created usertype flow"
-            
-            # Check who sent the request to OE to decide the next step.
-            last_forwarder_to_oe = submission.status_history.filter(next_usertype='OE').order_by('-date').first()
-            
-            if last_forwarder_to_oe and last_forwarder_to_oe.usertype == 'director':
-                # If the director sent it to OE, send it back to the creator's usertype.
-                if submission.created_by and submission.created_by.user:
-                    submission.current_usertype = submission.created_by.user.usertype
-                else:
-                    submission.current_usertype = "College"  # fallback if no creator
-            else:
-                # Otherwise, this is the primary action for OE: modify the flow and forward it.
-                # Only the OE user can modify the usertype flow in this context.
-                if 'user_flow' in form.cleaned_data:
-                    user_flow = form.cleaned_data.get("user_flow", [])
-                    user_flow = [ut for ut in user_flow if ut not in ("College", "OE", "director")]
-                    current_flow = submission.usertype_flow or []
-                    if current_flow and current_flow[-1] == "director":
-                        current_flow = current_flow[:-1]
-                    for ut in user_flow:
-                        if ut not in current_flow:
-                            current_flow.append(ut)
-                    if "director" not in current_flow:
-                        current_flow.append("director")
-                    submission.usertype_flow = current_flow
+                remark = remark or "Created usertype flow"
 
-                # And now, follow the main usertype flow.
-                flow = submission.usertype_flow or []
-                submitted_usertypes = list(submission.status_history.values_list("usertype", flat=True))
+            user_flow = form.cleaned_data.get("user_flow", [])
+            user_flow = [ut for ut in user_flow if ut not in ("College", "OE", "director")]
+
+            current_flow = submission.usertype_flow or []
+
+            if current_flow and current_flow[-1] == "director":
+                current_flow = current_flow[:-1]
+
+            for ut in user_flow:
+                if ut not in current_flow:
+                    current_flow.append(ut)
+
+            current_flow.append("director")
+            submission.usertype_flow = current_flow
+
+            submitted_usertypes = list(submission.status_history.values_list("usertype", flat=True))
+
+            next_usertype = None
+            try:
+                current_index = submission.usertype_flow.index(current_usertype)
+                for candidate in submission.usertype_flow[current_index + 1:]:
+                    if candidate not in submitted_usertypes:
+                        next_usertype = candidate
+                        break
+            except ValueError:
                 next_usertype = None
-                try:
-                    current_index = flow.index(current_usertype)
-                    for next_candidate in flow[current_index + 1:]:
-                        if next_candidate not in submitted_usertypes:
-                            next_usertype = next_candidate
-                            break
-                except ValueError:
-                    pass
-                submission.current_usertype = next_usertype
+
+            submission.current_usertype = next_usertype
+
         else:
             flow = submission.usertype_flow or []
-            # Find the last occurrence of the current usertype in the flow for re-assign
             last_index = len(flow) - 2 if len(flow) >= 2 and flow[-1] == "director" else len(flow) - 1
             try:
-                # Only consider the last occurrence for re-assign
                 if last_index >= 0 and flow[last_index] == current_usertype and flow[last_index + 1] == "director":
                     submission.current_usertype = "director"
                 else:
@@ -380,23 +427,21 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
                         submission.current_usertype = None
             except ValueError:
                 submission.current_usertype = "director"
-        
-        # Save and update history
+
         submission.updated_by = user_profile
         submission.save()
 
-        RequestSubmissionStatusHistory.objects.create(
+        history_record = RequestSubmissionStatusHistory.objects.create(
             submission=submission,
             user=user_profile,
             usertype=current_usertype,
             status=form.cleaned_data.get("status", "forwarded"),
             remark=remark,
             next_usertype=submission.current_usertype or "",
-        ).submitted_users.add(user_profile)
+        )
+        history_record.submitted_users.add(user_profile)
 
-        # Send notification to the correct user(s)
         if submission.current_usertype == "College":
-            # Only send notification to the user who created the request (the college user)
             if submission.created_by and submission.created_by.user:
                 notification = Notification(
                     user=submission.created_by.user,
@@ -406,7 +451,6 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
                 notification._request = self.request
                 notification.save()
         elif submission.current_usertype:
-            # For all other usertypes, notify all users of the next_usertype as before
             next_profiles = UserProfile.objects.filter(user__usertype=submission.current_usertype)
             for profile in next_profiles:
                 notification = Notification(
@@ -414,10 +458,9 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
                     message=f"Request assigned: {submission.title}",
                     url=submission.get_absolute_url()
                 )
-                notification._request = self.request  # Attach the request for correct domain in email
+                notification._request = self.request
                 notification.save()
 
-        # Notify the original submitter if the request is fully submitted (no next usertype)
         if submission.current_usertype is None:
             if submission.created_by and submission.created_by.user:
                 notification = Notification(

@@ -71,11 +71,20 @@ class RequestSubmission(BaseModel):
         oe_status = self.status_history.filter(usertype="OE").order_by("-date").first()
         return oe_status.status if oe_status else "Pending"
 
-    def is_approved_or_rejected_by_oe_to_college(self):
+    @property
+    def is_approved_or_rejected_for_current_user(self):
+        """Check if OE approved/rejected and assigned to the logged-in usertype."""
+        from django.middleware import get_current_request
+
+        request = get_current_request()
+        if not request or not hasattr(request.user, "profile"):
+            return False
+
+        user_profile = request.user.profile
         return self.status in ['approved', 'rejected'] and RequestSubmissionStatusHistory.objects.filter(
             submission=self,
             usertype='OE',
-            next_usertype='College'
+            next_usertype=user_profile.user.usertype,
         ).exists()
 
     def is_processed_by(self, user_profile):

@@ -18,7 +18,7 @@
           <i class="fe fe-printer fs-20"></i>
         </a>
         
-        {% if request.user.usertype != "College" and latest_next_usertype == request.user.usertype and request.user.id not in latest_submitted_user_ids %}
+        {% if request.user.usertype != "College" and latest_next_usertype == request.user.usertype and request.user.id not in latest_submitted_user_ids and request.user != object.creator  %}
           <a class="btn btn-icon p-0 border-0 bg-transparent shadow-none minimal-action-btn" href="{{ object.get_update_url }}" title="Edit">
             <i class="fe fe-edit fs-20"></i>
           </a>
@@ -41,25 +41,26 @@
           </div>
           <div class="status-content">
             <h2 class="status-title">
-              {% if object.status == 'approved' %}
+              {% if object.status == 'approved' and latest_next_usertype == request.user.usertype %}
                 Request Approved
-              {% elif object.status == 'rejected' %}
+              {% elif object.status == 'rejected' and latest_next_usertype == request.user.usertype %}
                 Request Rejected
               {% else %}
                 Request Under Review
               {% endif %}
             </h2>
+
             <p class="status-subtitle">
-              {% if object.status == 'approved' %}
+              {% if object.status == 'approved' and latest_next_usertype == request.user.usertype %}
                 Your submission has been approved.
-              {% elif object.status == 'rejected' %}
+              {% elif object.status == 'rejected' and latest_next_usertype == request.user.usertype %}
                 Your submission has been rejected.
               {% else %}
                 Your submission is currently under review and being processed.
               {% endif %}
             </p>
 
-            {% if object.status in 'approved rejected' %}
+            {% if object.status == 'approved' and latest_next_usertype == request.user.usertype or object.status == 'rejected' and latest_next_usertype == request.user.usertype %}
               <div class="status-actions">
                 <a href="{% url 'masters:request_submission_pdf' object.pk %}" target="_blank" class="pdf-view-btn">
                   <i class="fe fe-file-text"></i>
@@ -68,6 +69,13 @@
               </div>
             {% endif %}
           </div>
+          {% comment %} <div class="status-remark">
+            {% if object.remark %}
+              {{ object.remark|safe }}
+            {% else %}
+              No remarks provided.
+            {% endif %}
+          </div> {% endcomment %}
         </div>
       </div>
     {% endif %}
@@ -245,45 +253,47 @@
 <script src="https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    // === Status Animation ===
     const container = document.getElementById('statusAnimation');
 
-    const userType = '{{ request.user.usertype }}';
-    const userId = '{{ request.user.id }}';
-    const creatorId = '{{ object.created_by.id }}';
-    const status = '{{ object.status }}';
-    const currentUsertype = '{{ object.current_usertype }}';
+    // Pass Django variables as JS-safe strings
+    const userType = "{{ request.user.usertype|escapejs }}";
+    const userId = "{{ request.user.id }}";
+    const creatorId = "{{ object.created_by.id }}";
+    const status = "{{ object.status|escapejs }}";
+    const currentUsertype = "{{ object.current_usertype|escapejs }}";
+    const latestNextUsertype = "{{ latest_next_usertype|escapejs }}";
 
-    const isCollege = userType === 'College';
-    const isCRO = userType === 'CRO';
+    const isCollege = userType === "College";
+    const isCRO = userType === "CRO";
     const isCreator = userId === creatorId;
     const isAuthorizedViewer = true;
 
     if (container && isAuthorizedViewer) {
-      let animationPath = '';
-      if (status === 'approved') {
-        animationPath = '{% static "app/assets/animation/success.json" %}';
-      } else if (status === 'rejected') {
-        animationPath = '{% static "app/assets/animation/rejection.json" %}';
+      let animationPath = "";
+
+      if (status === "approved" && latestNextUsertype === userType) {
+        animationPath = "{% static 'app/assets/animation/success.json' %}";
+      } else if (status === "rejected" && latestNextUsertype === userType) {
+        animationPath = "{% static 'app/assets/animation/rejection.json' %}";
       } else {
-        animationPath = '{% static "app/assets/animation/timing.json" %}';
+        animationPath = "{% static 'app/assets/animation/timing.json' %}";
       }
 
       const animation = lottie.loadAnimation({
         container: container,
-        renderer: 'svg',
-        loop: !(status === 'approved' || status === 'rejected'),
+        renderer: "svg",
+        loop: !(status === "approved" || status === "rejected"),
         autoplay: true,
         path: animationPath
       });
 
-      container.style.width = '100%';
-      container.style.height = '100%';
+      container.style.width = "100%";
+      container.style.height = "100%";
 
-      animation.addEventListener('data_failed', function () {
-        if (status === 'approved') {
+      animation.addEventListener("data_failed", function () {
+        if (status === "approved") {
           container.innerHTML = '<i class="fe fe-check-circle animation-fallback"></i>';
-        } else if (status === 'rejected') {
+        } else if (status === "rejected") {
           container.innerHTML = '<i class="fe fe-x-circle animation-fallback"></i>';
         } else {
           container.innerHTML = '<i class="fe fe-clock animation-fallback"></i>';
@@ -292,39 +302,31 @@
     }
 
     // === Bootstrap Modal (Remarks) ===
-    const remarkModalEl = document.getElementById('remarkModal');
-    const remarkModal = new bootstrap.Modal(remarkModalEl);
-
-    document.querySelectorAll('.view-remark-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        const remarkId = btn.getAttribute('data-remark-id');
+    document.querySelectorAll(".view-remark-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const remarkId = btn.getAttribute("data-remark-id");
         const scriptTag = document.getElementById(remarkId);
         if (scriptTag) {
-          const html = scriptTag.textContent;
-          document.getElementById('remarkModalBody').innerHTML = html;
-          remarkModal.show();
+          document.getElementById("remarkModalBody").innerHTML = scriptTag.textContent;
+          new bootstrap.Modal(document.getElementById("remarkModal")).show();
         }
       });
     });
 
     // === Description Modal ===
-    const descriptionModalEl = document.getElementById('descriptionModal');
-    const descriptionModal = new bootstrap.Modal(descriptionModalEl);
-
-    document.querySelectorAll('.view-description-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        const descriptionId = btn.getAttribute('data-remark-id');
+    document.querySelectorAll(".view-description-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const descriptionId = btn.getAttribute("data-remark-id");
         const scriptTag = document.getElementById(descriptionId);
         if (scriptTag) {
-          const html = scriptTag.textContent;
-          document.getElementById('descriptionModalBody').innerHTML = html;
-          descriptionModal.show();
+          document.getElementById("descriptionModalBody").innerHTML = scriptTag.textContent;
+          new bootstrap.Modal(document.getElementById("descriptionModal")).show();
         }
       });
     });
 
-    // Cleanup any leftover backdrops
-    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    // Remove any leftover backdrops
+    document.querySelectorAll(".modal-backdrop").forEach(el => el.remove());
   });
 </script>
 

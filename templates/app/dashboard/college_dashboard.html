@@ -29,7 +29,7 @@
         <div class="row">
             <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
                 <div class="card custom-card">
-                    <a href="{% url 'masters:request_submission_list' %}?status=approved">
+                    <a href="{% url 'masters:my_request_submission_list' %}?status=approved">
                         <div class="card-body">
                             <div class="d-flex align-items-center">
                                 <div class="me-3">
@@ -52,7 +52,7 @@
 
             <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
                 <div class="card custom-card">
-                    <a href="{% url 'masters:request_submission_list' %}?status=rejected">
+                    <a href="{% url 'masters:my_request_submission_list' %}?status=rejected">
                         <div class="card-body">
                             <div class="d-flex align-items-center">
                                 <div class="me-3">
@@ -75,7 +75,7 @@
 
             <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
                 <div class="card custom-card">
-                    <a href="{% url 'masters:request_submission_list' %}?status=pending">
+                    <a href="{% url 'masters:my_request_submission_list' %}?status=pending">
                         <div class="card-body">
                             <div class="d-flex align-items-center">
                                 <div class="me-3">
@@ -104,7 +104,7 @@
                     <div class="card-header">
                         <h3 class="card-title">Assigned Requests</h3>
                         <div class="card-options">
-                            <a href="{% url 'masters:request_submission_list' %}" class="btn btn-sm btn-primary gradient-hover">View All</a>
+                            <a href="{% url 'masters:my_request_submission_list' %}" class="btn btn-sm btn-primary gradient-hover">View All</a>
                         </div>
                     </div>
                     <div class="card-body p-0">

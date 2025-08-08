@@ -1,5 +1,5 @@
 from django import forms
-
+from core.base import BaseForm
 from users.models import UserProfile
 from .models import Memo, RequestSubmission, REQUEST_SUBMISSION_STATUS_CHOICES, USERTYPE_CHOICES, RequestSubmissionStatusHistory, RequestSubmissionType
 from django.contrib.auth import get_user_model

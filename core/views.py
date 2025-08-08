@@ -29,7 +29,6 @@ from django.db import models
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponseRedirect
 from .models import Notification
-
 class HomeView(mixins.HybridTemplateView):
     template_name = "core/dashboard.html"
 
@@ -90,11 +89,17 @@ class HomeView(mixins.HybridTemplateView):
             has_user_submitted=True
         ).count()
 
+        assigned_and_submitted_count = requests_queryset.filter(
+            is_still_assigned=True,
+            has_user_submitted=True
+        ).count()
+
         return {
             'approved': approved,
             'rejected': rejected,
             'pending': pending,
-            'processing': processing
+            'processing': processing,
+            'assigned_and_submitted': assigned_and_submitted_count,
         }
 
     def get_pending_requests(self, user, user_profile):
@@ -137,24 +142,61 @@ class HomeView(mixins.HybridTemplateView):
         users_qs = User.objects.filter(is_active=True)
         profiles_qs = UserProfile.objects.filter(is_active=True)
 
-        if user.is_superuser or usertype in ["director", "OE"]:
+        # Filtering for College usertype includes assigned requests created by user
+        if user.is_superuser or usertype == "director":
+            filtered_requests = base_queryset
+        elif usertype == "College":
+            latest_status_subquery = RequestSubmissionStatusHistory.objects.filter(
+                submission=OuterRef('pk')
+            ).order_by('-date')
+
+            filtered_requests = base_queryset.annotate(
+                latest_next_usertype=Subquery(latest_status_subquery.values('next_usertype')[:1])
+            ).filter(
+                latest_next_usertype=usertype,
+                created_by=user_profile
+            ).distinct()
+        else:
+            filtered_requests = base_queryset.filter(
+                Q(status_history__next_usertype=usertype) |
+                Q(status_history__submitted_users=user_profile)
+            ).distinct()
+
+        total_requests_count = filtered_requests.count()
+
+        status_counts = self.get_status_counts(filtered_requests)
+
+        if user.is_superuser or usertype == "director":
             filtered_users = users_qs
             filtered_profiles = profiles_qs
-            filtered_requests = base_queryset
         else:
             filtered_users = users_qs.filter(id=user.id)
             filtered_profiles = profiles_qs.filter(user=user)
 
+        # Calculate assigned_requests_count to show "Assigned to Me" count
+        assigned_requests_count = 0
+        if user_profile and not user.is_superuser:
             if usertype == "College":
-                filtered_requests = base_queryset.filter(created_by=user_profile)
+                assigned_requests_count = RequestSubmission.objects.filter(
+                    is_active=True,
+                    created_by=user_profile,
+                    status_history__next_usertype='College'
+                ).distinct().count()
             else:
-                filtered_requests = base_queryset.filter(
-                    Q(created_by=user_profile) |
-                    Q(status_history__submitted_users=user_profile) |
-                    Q(status_history__next_usertype=usertype)
-                ).distinct()
+                latest_status_subquery = RequestSubmissionStatusHistory.objects.filter(
+                    submission=OuterRef('pk')
+                ).order_by('-date')
 
-        status_counts = self.get_status_counts(filtered_requests)
+                assigned_requests_count = RequestSubmission.objects.annotate(
+                    latest_status_id=Subquery(latest_status_subquery.values('id')[:1]),
+                    latest_next_usertype=Subquery(latest_status_subquery.values('next_usertype')[:1])
+                ).filter(
+                    is_active=True,
+                    latest_next_usertype=usertype
+                ).exclude(
+                    created_by=user_profile
+                ).distinct().count()
+
         context.update({
             'total_users': filtered_users.exclude(is_superuser=True).count(),
             'active_users': filtered_users.exclude(is_superuser=True).filter(is_active=True).count(),
@@ -163,11 +205,12 @@ class HomeView(mixins.HybridTemplateView):
             'total_profiles': filtered_profiles.count(),
             'profiles_with_photo': filtered_profiles.exclude(photo='').count(),
             'profiles_with_mobile': filtered_profiles.exclude(mobile='').count(),
-            'total_requests': filtered_requests.count(),
+            'total_requests': total_requests_count,
             'approved_requests': status_counts['approved'],
             'rejected_requests': status_counts['rejected'],
             'pending_requests': status_counts['pending'],
             'processing_requests': status_counts['processing'],
+            'assigned_requests_count': assigned_requests_count,
             'status_distribution': [
                 {'current_status': 'approved', 'count': status_counts['approved']},
                 {'current_status': 'rejected', 'count': status_counts['rejected']},
@@ -176,22 +219,19 @@ class HomeView(mixins.HybridTemplateView):
             ],
             'approved_count': status_counts['approved'],
             'rejected_count': status_counts['rejected'],
-            'pending_count': status_counts['pending'],
+            'pending_count': RequestSubmission.objects.filter(status='pending', is_active=True, creator=user).count(),
         })
 
+        # recent_assigned_requests for non-superusers
         recent_assigned_requests = []
         if user_profile and not user.is_superuser:
             if usertype == "College":
-                # ✅ FIX: Show requests created by user AND next_usertype == 'College'
                 assigned_qs = RequestSubmission.objects.filter(
                     is_active=True,
                     created_by=user_profile,
                     status_history__next_usertype='College'
                 ).distinct().order_by('-created')
             else:
-                # ✅ Only show requests assigned to the logged-in user's usertype
-                # AND not created by the same user
-                # AND latest status_history.next_usertype is usertype
                 latest_status_subquery = RequestSubmissionStatusHistory.objects.filter(
                     submission=OuterRef('pk')
                 ).order_by('-date')
@@ -229,9 +269,7 @@ class HomeView(mixins.HybridTemplateView):
                 else:
                     req.dashboard_status = 'processing'
 
-                # Add flag for PDF display
                 req.is_created_by_user = (req.created_by_id == user_profile.id)
-
                 recent_assigned_requests.append(req)
 
         context['recent_assigned_requests'] = recent_assigned_requests[:10]
@@ -352,6 +390,7 @@ class HomeView(mixins.HybridTemplateView):
                 completed += 1
         
         return round((completed / total) * 100, 1)
+
 
 @login_required
 def notification_list(request):

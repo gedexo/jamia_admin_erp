@@ -8,31 +8,28 @@ class RequestSubmissionTable(BaseTable):
     status = columns.TemplateColumn(
         verbose_name="Status",
         template_code="""
-        {% if request.user.usertype == "College" %}
             {% if record.status == "approved" %}
                 <span class="badge bg-success">Approved</span>
+            
             {% elif record.status == "rejected" %}
                 <span class="badge bg-danger">Rejected</span>
-            {% else %}
+            
+            {% elif request.user.usertype == "College" %}
                 <span class="badge bg-warning text-white">Pending</span>
-            {% endif %}
-        {% else %}
-            {% if record.is_approved_or_rejected_by_oe_to_college %}
+            
+            {% elif record.approved_or_rejected_for_current_user|default_if_none:False %}
                 {% if record.status == "approved" %}
                     <span class="badge bg-success">Approved</span>
                 {% elif record.status == "rejected" %}
                     <span class="badge bg-danger">Rejected</span>
                 {% endif %}
+            
+            {% elif record.status == "processing" or record.is_processing %}
+                <span class="badge bg-primary text-white">Processing</span>
+            
             {% else %}
-                {% if record.status == "processing" %}
-                    <span class="badge bg-primary text-white">Processing</span>
-                {% elif record.is_processing %}
-                    <span class="badge bg-info text-white">Processing</span>
-                {% else %}
-                    <span class="badge bg-warning text-white">Pending</span>
-                {% endif %}
+                <span class="badge bg-warning text-white">Pending</span>
             {% endif %}
-        {% endif %}
         """,
         orderable=True,
     )
@@ -41,6 +38,36 @@ class RequestSubmissionTable(BaseTable):
         model = RequestSubmission
         fields = ("request_id", "title", "college", "created", "status")
         attrs = {"class": "table key-buttons border-bottom"}
+
+    
+class MyRequestSubmissionTable(BaseTable):
+    created = columns.DateTimeColumn(verbose_name="Created At", format="d/m/Y")
+    request_id = columns.Column(verbose_name="Request ID")
+    status = columns.TemplateColumn(
+        verbose_name="Status",
+        template_code="""
+            {% if record.oe_assigned_to_me %}
+                {% if record.status == "approved" %}
+                    <span class="badge bg-success">Approved</span>
+                {% elif record.status == "rejected" %}
+                    <span class="badge bg-danger">Rejected</span>
+                {% elif record.status == "processing" or record.is_processing %}
+                    <span class="badge bg-primary text-white">Processing</span>
+                {% else %}
+                    <span class="badge bg-warning text-white">Pending</span>
+                {% endif %}
+            {% else %}
+                <span class="badge bg-warning text-white">Pending</span>
+            {% endif %}
+        """,
+        orderable=True,
+    )
+
+    class Meta:
+        model = RequestSubmission
+        fields = ("request_id", "title", "college", "created", "status")
+        attrs = {"class": "table key-buttons border-bottom"}
+
 
 
 class RequestSubmissionTypeTable(BaseTable):
