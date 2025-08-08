@@ -485,15 +485,25 @@ class RequestSubmissionDeleteView(mixins.HybridDeleteView):
 def download_request_submission_pdf(request, pk):
     instance = get_object_or_404(RequestSubmission, pk=pk)
 
-    # Get the latest OE remark
-    last_oe_remark = (
-        instance.status_history
-        .filter(usertype="OE", remark__isnull=False)
-        .order_by("-date")
-        .first()
-    )
+    # Determine which remark to show based on current usertype
+    if request.user.usertype == "OE":
+        # Get latest director remark
+        last_remark = (
+            instance.status_history
+            .filter(usertype="director", remark__isnull=False)
+            .order_by("-date")
+            .first()
+        )
+    else:
+        # Get latest OE remark (or fallback as needed)
+        last_remark = (
+            instance.status_history
+            .filter(usertype="OE", remark__isnull=False)
+            .order_by("-date")
+            .first()
+        )
 
-    full_text = last_oe_remark.remark if last_oe_remark else ""
+    full_text = last_remark.remark if last_remark else ""
 
     # Word splitting for pages
     first_page_length = 370
