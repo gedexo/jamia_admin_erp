@@ -41,7 +41,7 @@ RATING_CHOICES = ((1, "One"), (2, "Two"), (3, "Three"), (4, "Four"), (5, "Five")
 
 STATUS_CHOICES = (("on_hold", "On hold"), ("rejected", "Rejected"), ("approved", "Approved"))
 
-REQUEST_SUBMISSION_STATUS_CHOICES = (("pending", "Pending"), ("forwarded", "Forwarded"), ("rejected", "Rejected"), ("approved", "Approved"))
+REQUEST_SUBMISSION_STATUS_CHOICES = (("forwarded", "Forwarded"), ("re_assign", "Re Assign"), ("approved", "Approved"), ("rejected", "Rejected"), ("pending", "Pending"),)
 
 SALUTATION_CHOICES = (("Dr.", "Dr."), ("Miss", "Miss"), ("Mr", "Mr"), ("Mrs", "Mrs"), ("Prof.", "Prof."))
 
@@ -165,7 +165,7 @@ EMPLOYEE_STATUS_CHOICES = (("Appointed", "Appointed"), ("Resigned", "Resigned"),
 
 PAYMENT_METHOD_CHOICES = [('cash', 'Cash'), ('bank', 'Bank Transfer')]
 USERTYPE_CHOICES = [
-    ("CRO", "Chief Relation Officer"),
+    ("CRO", "Community Relation Officer"),
     ("OE", "Office Executive"),
     ("PRO", "Public Relation Officer"),
     ("CAO", "Chief Academic Officer"),
@@ -174,7 +174,6 @@ USERTYPE_CHOICES = [
     ("AA", "Assistant Administrator"),
     ("FO", "Finance Officer"),
     ("College", "College"),
-
 ]
 
 ACCOUNTING_MASTER_CHOICES = (("Assets", "Assets"), ("Liabilities", "Liabilities"), ("Equity", "Equity"), ("Income", "Income"), ("Expense", "Expense"))

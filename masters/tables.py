@@ -46,16 +46,12 @@ class MyRequestSubmissionTable(BaseTable):
     status = columns.TemplateColumn(
         verbose_name="Status",
         template_code="""
-            {% if record.oe_assigned_to_me %}
-                {% if record.status == "approved" %}
-                    <span class="badge bg-success">Approved</span>
-                {% elif record.status == "rejected" %}
-                    <span class="badge bg-danger">Rejected</span>
-                {% elif record.status == "processing" or record.is_processing %}
-                    <span class="badge bg-primary text-white">Processing</span>
-                {% else %}
-                    <span class="badge bg-warning text-white">Pending</span>
-                {% endif %}
+            {% if record.status == "approved" %}
+                <span class="badge bg-success">Approved</span>
+            {% elif record.status == "rejected" %}
+                <span class="badge bg-danger">Rejected</span>
+            {% elif record.status == "processing" or record.is_processing %}
+                <span class="badge bg-primary text-white">Processing</span>
             {% else %}
                 <span class="badge bg-warning text-white">Pending</span>
             {% endif %}

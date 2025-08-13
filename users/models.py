@@ -18,7 +18,7 @@ class UserProfile(BaseModel):
     photo = ThumbnailerImageField(blank=True, null=True, upload_to="users/photos/")
 
     def __str__(self):
-        return str(self.user)
+        return f"{self.first_name} {self.last_name}" if self.last_name else self.first_name
 
     def fullname(self):
         if self.last_name:

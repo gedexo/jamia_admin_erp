@@ -8,6 +8,7 @@ urlpatterns = [
     # Request Submission
     path("request-submission/", views.RequestSubmissionListView.as_view(), name="request_submission_list"),
     path("my-request-submission/", views.MyRequestSubmissionListView.as_view(), name="my_request_submission_list"),
+    path("shared-requests/", views.SharedRequestsListView.as_view(), name="shared_requests_list"),
     path("request-submission/<str:pk>/", views.RequestSubmissionDetailView.as_view(), name="request_submission_detail"),
     path("new/request-submission/", views.RequestSubmissionCreateView.as_view(), name="request_submission_create"),
     path("request-submission/<str:pk>/update/", views.RequestStatusUpdateView.as_view(), name="request_submission_update"),

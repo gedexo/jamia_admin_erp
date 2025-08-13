@@ -25,75 +25,92 @@
             </div>
         </div>
 
-        <!-- Only show Approved/Rejected Requests cards -->
+        <!-- Statistics Cards -->
         <div class="row">
-            <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
-                <div class="card custom-card">
-                    <a href="{% url 'masters:my_request_submission_list' %}?status=approved">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="me-3">
-                                    <span class="avatar avatar-lg bg-success-transparent rounded-circle">
-                                        <i class="fe fe-check-circle fs-16 text-success"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h4 class="mb-1 fw-semibold">{{ approved_count|default:0 }}</h4>
-                                    <p class="mb-0 text-muted">Approved Count</p>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-success-transparent">Approved</span>
-                                </div>
+
+            <!-- My Requests -->
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                <a href="{% url 'masters:my_request_submission_list' %}">
+                    <div class="card custom-card">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="me-3">
+                                <span class="avatar avatar-lg bg-primary-transparent rounded-circle">
+                                    <i class="fe fe-file-text fs-16 text-primary"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h4 class="mb-1 fw-semibold">{{ my_requests_count }}</h4>
+                                <p class="mb-0 text-muted">My Requests</p>
                             </div>
                         </div>
-                    </a>
-                </div>
+                    </div>
+                </a>
             </div>
 
-            <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
-                <div class="card custom-card">
-                    <a href="{% url 'masters:my_request_submission_list' %}?status=rejected">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="me-3">
-                                    <span class="avatar avatar-lg bg-danger-transparent rounded-circle">
-                                        <i class="fe fe-x-circle fs-16 text-danger"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h4 class="mb-1 fw-semibold">{{ rejected_count|default:0 }}</h4>
-                                    <p class="mb-0 text-muted">Rejected Count</p>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-danger-transparent">Rejected</span>
-                                </div>
+            <!-- My Pending Requests -->
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                <a href="{% url 'masters:my_request_submission_list' %}?status=pending">
+                    <div class="card custom-card">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="me-3">
+                                <span class="avatar avatar-lg bg-warning-transparent rounded-circle">
+                                    <i class="fe fe-file-text fs-16 text-warning"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h4 class="mb-1 fw-semibold">{{ my_pending_requests_count }}</h4>
+                                <p class="mb-0 text-muted">My Pending Requests</p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-warning-transparent">{{ my_pending_requests }} pending</span>
                             </div>
                         </div>
-                    </a>
-                </div>
+                    </div>
+                </a>
             </div>
 
-            <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
-                <div class="card custom-card">
-                    <a href="{% url 'masters:my_request_submission_list' %}?status=pending">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="me-3">
-                                    <span class="avatar avatar-lg bg-warning-transparent rounded-circle">
-                                        <i class="fe fe-clock fs-16 text-warning"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h4 class="mb-1 fw-semibold">{{ pending_count|default:0 }}</h4>
-                                    <p class="mb-0 text-muted">Pending Count</p>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-warning-transparent">Pending</span>
-                                </div>
+            <!-- My Approved Requests -->
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                <a href="{% url 'masters:my_request_submission_list' %}?status=approved">
+                    <div class="card custom-card">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="me-3">
+                                <span class="avatar avatar-lg bg-success-transparent rounded-circle">
+                                    <i class="fe fe-file-text fs-16 text-success"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h4 class="mb-1 fw-semibold">{{ my_approved_requests_count }}</h4>
+                                <p class="mb-0 text-muted">My Approved Requests</p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-success-transparent">{{ my_approved_requests }} approved</span>
                             </div>
                         </div>
-                    </a>
-                </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- My Rejected Requests -->
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                <a href="{% url 'masters:my_request_submission_list' %}?status=rejected">
+                    <div class="card custom-card">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="me-3">
+                                <span class="avatar avatar-lg bg-danger-transparent rounded-circle">
+                                    <i class="fe fe-file-text fs-16 text-danger"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h4 class="mb-1 fw-semibold">{{ my_rejected_requests_count }}</h4>
+                                <p class="mb-0 text-muted">My Rejected Requests</p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-danger-transparent">{{ my_rejected_requests }} rejected</span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
             </div>
         </div>
 

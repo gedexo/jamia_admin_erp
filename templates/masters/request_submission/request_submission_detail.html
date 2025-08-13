@@ -33,7 +33,7 @@
     </div>
 
     <!-- Status Card Section -->
-    {% if is_college_user_of_creator or request.user == object.creator %}
+    {% if is_college_user_of_creator or request.user == object.creator or is_usertype_shared %}
       <div class="status-section mb-5">
         <div class="status-container">
           <div class="status-icon">
@@ -41,41 +41,52 @@
           </div>
           <div class="status-content">
             <h2 class="status-title">
-              {% if object.status == 'approved' and latest_next_usertype == request.user.usertype %}
-                Request Approved
-              {% elif object.status == 'rejected' and latest_next_usertype == request.user.usertype %}
-                Request Rejected
-              {% else %}
-                Request Under Review
-              {% endif %}
+                {% if object.status == 'approved' %}
+                    {% if latest_next_usertype == request.user.usertype or request.user == object.creator or is_usertype_shared %}
+                        Request Approved
+                    {% else %}
+                        Request Under Review
+                    {% endif %}
+                {% elif object.status == 'rejected' %}
+                    {% if latest_next_usertype == request.user.usertype or request.user == object.creator or is_usertype_shared %}
+                        Request Rejected
+                    {% else %}
+                        Request Under Review
+                    {% endif %}
+                {% else %}
+                    Request Under Review
+                {% endif %}
             </h2>
 
             <p class="status-subtitle">
-              {% if object.status == 'approved' and latest_next_usertype == request.user.usertype %}
-                Your submission has been approved.
-              {% elif object.status == 'rejected' and latest_next_usertype == request.user.usertype %}
-                Your submission has been rejected.
+              {% if object.status == 'approved' %}
+                  {% if latest_next_usertype == request.user.usertype or request.user == object.creator or is_usertype_shared %}
+                      The submission has been approved.
+                  {% else %}
+                      The submission is currently under review and being processed.
+                  {% endif %}
+              {% elif object.status == 'rejected' %}
+                  {% if latest_next_usertype == request.user.usertype or request.user == object.creator or is_usertype_shared %}
+                      The submission has been rejected.
+                  {% else %}
+                      The submission is currently under review and being processed.
+                  {% endif %}
               {% else %}
-                Your submission is currently under review and being processed.
+                  The submission is currently under review and being processed.
               {% endif %}
             </p>
 
-            {% if object.status == 'approved' and latest_next_usertype == request.user.usertype or object.status == 'rejected' and latest_next_usertype == request.user.usertype %}
-              <div class="status-actions">
-                <a href="{% url 'masters:request_submission_pdf' object.pk %}" target="_blank" class="pdf-view-btn">
-                  <i class="fe fe-file-text"></i>
-                  <span>View PDF</span>
-                </a>
-              </div>
+            {% if object.status == 'approved' or object.status == 'rejected' %}
+              {% if latest_next_usertype == request.user.usertype or request.user == object.creator or is_usertype_shared %}
+                <div class="status-actions">
+                  <a href="{% url 'masters:request_submission_pdf' object.pk %}" target="_blank" class="pdf-view-btn">
+                    <i class="fe fe-file-text"></i>
+                    <span>View PDF</span>
+                  </a>
+                </div>
+              {% endif %}
             {% endif %}
           </div>
-          {% comment %} <div class="status-remark">
-            {% if object.remark %}
-              {{ object.remark|safe }}
-            {% else %}
-              No remarks provided.
-            {% endif %}
-          </div> {% endcomment %}
         </div>
       </div>
     {% endif %}
@@ -117,7 +128,7 @@
               <div class="d-flex justify-content-between w-100">
                 <label class="detail-label">Description</label>
                 {% if request.user.usertype == "director" or request.user.usertype == "OE" or request.user.is_superuser %}
-                <div class="detail-button btn btn-primary btn-sm view-description-btn" data-bs-toggle="modal" data-bs-target="#descriptionModal" data-remark-id="description-{{ object.id }}">View Description</div>
+                <div class="detail-button btn btn-primary btn-sm view-description-btn" data-bs-toggle="modal" data-bs-target="#descriptionModal" data-remark-id="description-{{ object.id }}">View Request</div>
                 {% endif %}
               </div>
               
@@ -147,7 +158,7 @@
     </div>
 
     <!-- Status History Table Section -->
-    {% if not request.user.usertype == "College" %}
+    {% if request.user.usertype != "College" and not is_usertype_shared %}
       <div class="card table-card border-0 shadow-sm">
         <div class="card-header bg-transparent border-bottom">
           <h5 class="mb-0">Status History</h5>
@@ -179,7 +190,9 @@
                     {% elif history.status == 'forwarded' %}
                       <span class="badge bg-info-light">forwarded</span>
                     {% elif history.status == 'pending' %}
-                      <span class="badge bg-warning-light">pending</span>
+                      <span class="badge bg-warning-light text-white">pending</span>
+                    {% elif history.status == 're_assign' %}
+                      <span class="badge bg-dark bg-gradient">re_assign</span>
                     {% else %}
                       <span class="badge bg-secondary-light">{{ history.status }}</span>
                     {% endif %}
@@ -255,13 +268,13 @@
   document.addEventListener("DOMContentLoaded", function () {
     const container = document.getElementById('statusAnimation');
 
-    // Pass Django variables as JS-safe strings
     const userType = "{{ request.user.usertype|escapejs }}";
     const userId = "{{ request.user.id }}";
     const creatorId = "{{ object.created_by.id }}";
     const status = "{{ object.status|escapejs }}";
     const currentUsertype = "{{ object.current_usertype|escapejs }}";
     const latestNextUsertype = "{{ latest_next_usertype|escapejs }}";
+    const SharedUsertypes = {{ is_usertype_shared|yesno:"true,false" }};
 
     const isCollege = userType === "College";
     const isCRO = userType === "CRO";
@@ -271,9 +284,9 @@
     if (container && isAuthorizedViewer) {
       let animationPath = "";
 
-      if (status === "approved" && latestNextUsertype === userType) {
+      if (status === "approved" && latestNextUsertype === userType || SharedUsertypes) {
         animationPath = "{% static 'app/assets/animation/success.json' %}";
-      } else if (status === "rejected" && latestNextUsertype === userType) {
+      } else if (status === "rejected" && latestNextUsertype === userType || SharedUsertypes) {
         animationPath = "{% static 'app/assets/animation/rejection.json' %}";
       } else {
         animationPath = "{% static 'app/assets/animation/timing.json' %}";
@@ -325,8 +338,14 @@
       });
     });
 
-    // Remove any leftover backdrops
-    document.querySelectorAll(".modal-backdrop").forEach(el => el.remove());
+    // Remove leftover backdrops when any modal is hidden
+    document.querySelectorAll('.modal').forEach(function (modalEl) {
+      modalEl.addEventListener('hidden.bs.modal', function () {
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('padding-right');
+      });
+    });
   });
 </script>
 
@@ -450,10 +469,10 @@
 
   /* Status Section */
   .status-section {
-    background: linear-gradient(135deg, {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#f0fdf4{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#fef2f2{% else %}#eff6ff{% endif %} 0%, {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#ecfdf5{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#fef7f7{% else %}#dbeafe{% endif %} 100%);
+    background: linear-gradient(135deg, {% if object.status == "approved" and object.current_usertype == request.user.usertype or is_usertype_shared %}#f0fdf4{% elif object.status == "rejected" and object.current_usertype == request.user.usertype or is_usertype_shared %}#fef2f2{% else %}#eff6ff{% endif %} 0%, {% if object.status == "approved" and object.current_usertype == request.user.usertype or is_usertype_shared %}#ecfdf5{% elif object.status == "rejected" and object.current_usertype == request.user.usertype or is_usertype_shared %}#fef7f7{% else %}#dbeafe{% endif %} 100%);
     border-radius: 16px;
     padding: 2rem;
-    border: 1px solid {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#dcfce7{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#fecaca{% else %}#bfdbfe{% endif %};
+    border: 1px solid {% if object.status == "approved" and object.current_usertype == request.user.usertype or is_usertype_shared %}#dcfce7{% elif object.status == "rejected" and object.current_usertype == request.user.usertype or is_usertype_shared %}#fecaca{% else %}#bfdbfe{% endif %};
   }
   
   .status-container {
@@ -467,11 +486,11 @@
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#10b981{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#ef4444{% else %}#3b82f6{% endif %};
+    background: {% if object.status == "approved" and object.current_usertype == request.user.usertype or is_usertype_shared %}#10b981{% elif object.status == "rejected" and object.current_usertype == request.user.usertype or is_usertype_shared %}#ef4444{% else %}#3b82f6{% endif %};
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px {% if object.status == "approved" and object.current_usertype == request.user.usertype %}rgba(16, 185, 129, 0.25){% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}rgba(239, 68, 68, 0.25){% else %}rgba(59, 130, 246, 0.25){% endif %};
+    box-shadow: 0 4px 12px {% if object.status == "approved" and object.current_usertype == request.user.usertype or is_usertype_shared %}rgba(16, 185, 129, 0.25){% elif object.status == "rejected" and object.current_usertype == request.user.usertype or is_usertype_shared %}rgba(239, 68, 68, 0.25){% else %}rgba(59, 130, 246, 0.25){% endif %};
   }
   
   .animation-container {
@@ -495,26 +514,26 @@
   .status-title {
     font-size: 1.5rem;
     font-weight: 600;
-    color: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#065f46{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#991b1b{% else %}#1e40af{% endif %};
+    color: {% if object.status == "approved" or is_usertype_shared %}#065f46{% elif object.status == "rejected" and object.current_usertype == request.user.usertype or is_usertype_shared %}#991b1b{% else %}#1e40af{% endif %};
     margin: 0 0 0.5rem 0;
     line-height: 1.3;
   }
   
-  .status-subtitle {
-    font-size: 0.9375rem;
-    color: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#047857{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#dc2626{% else %}#2563eb{% endif %};
-    margin: 0 0 1rem 0;
-    line-height: 1.5;
-    opacity: 0.9;
-  }
+.status-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: {% if object.status == "approved" and latest_next_usertype == request.user.usertype or is_usertype_shared %}#065f46{% elif object.status == "rejected" and latest_next_usertype == request.user.usertype or is_usertype_shared %}#991b1b{% else %}#1e40af{% endif %};
+  margin: 0 0 0.5rem 0;
+  line-height: 1.3;
+}
   
   .status-remark {
     background: white;
-    border: 1px solid {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#bbf7d0{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#fca5a5{% else %}#93c5fd{% endif %};
+    border: 1px solid {% if object.status == "approved" and object.current_usertype == request.user.usertype or is_shared_requests %}#bbf7d0{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#fca5a5{% else %}#93c5fd{% endif %};
     border-radius: 8px;
     padding: 1rem;
     font-size: 0.875rem;
-    color: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#065f46{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#991b1b{% else %}#1e40af{% endif %};
+    color: {% if object.status == "approved" and object.current_usertype == request.user.usertype or is_shared_requests %}#065f46{% elif object.status == "rejected" and object.current_usertype == request.user.usertype or is_shared_requests %}#991b1b{% else %}#1e40af{% endif %};
     line-height: 1.5;
   }
   
@@ -529,9 +548,9 @@
     gap: 0.5rem;
     padding: 0.625rem 1rem;
     background: white;
-    border: 1px solid {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#10b981{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#ef4444{% else %}#3b82f6{% endif %};
+    border: 1px solid {% if object.status == "approved" or is_shared_requests %}#10b981{% elif object.status == "rejected" or is_shared_requests %}#ef4444{% else %}#3b82f6{% endif %};
     border-radius: 8px;
-    color: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#10b981{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#ef4444{% else %}#3b82f6{% endif %};
+    color: {% if object.status == "approved" or is_shared_requests %}#10b981{% elif object.status == "rejected" or is_shared_requests %}#ef4444{% else %}#3b82f6{% endif %};
     text-decoration: none;
     font-size: 0.875rem;
     font-weight: 500;
@@ -540,11 +559,11 @@
   }
   
   .pdf-view-btn:hover {
-    background: {% if object.status == "approved" and object.current_usertype == request.user.usertype %}#10b981{% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}#ef4444{% else %}#3b82f6{% endif %};
+    background: {% if object.status == "approved" or is_shared_requests %}#10b981{% elif object.status == "rejected" or is_shared_requests %}#ef4444{% else %}#3b82f6{% endif %};
     color: white;
     text-decoration: none;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px {% if object.status == "approved" and object.current_usertype == request.user.usertype %}rgba(16, 185, 129, 0.3){% elif object.status == "rejected" and object.current_usertype == request.user.usertype %}rgba(239, 68, 68, 0.3){% else %}rgba(59, 130, 246, 0.3){% endif %};
+    box-shadow: 0 4px 12px {% if object.status == "approved" or is_shared_requests %}rgba(16, 185, 129, 0.3){% elif object.status == "rejected" or is_shared_requests %}rgba(239, 68, 68, 0.3){% else %}rgba(59, 130, 246, 0.3){% endif %};
   }
   
   .pdf-view-btn i {

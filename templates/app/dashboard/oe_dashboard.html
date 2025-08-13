@@ -27,112 +27,94 @@
 
         <!-- Statistics Cards -->
         <div class="row">
-            <!-- Total Users -->
+
+            <!-- My Requests -->
             <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <a href="{% url 'users:user_profile_list' %}">
+                <a href="{% url 'masters:my_request_submission_list' %}">
                     <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="me-3">
-                                    <span class="avatar avatar-lg bg-custom-gradient rounded-circle shadow-gradient">
-                                        <i class="fe fe-users fs-16 text-white"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h4 class="mb-1 fw-semibold text-gradient">{{ total_users }}</h4>
-                                    <p class="mb-0 text-muted">Total Users</p>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-success-transparent">{{ new_users_this_month }} new this month</span>
-                                </div>
+                        <div class="card-body d-flex align-items-center">
+                            <div class="me-3">
+                                <span class="avatar avatar-lg bg-primary-transparent rounded-circle">
+                                    <i class="fe fe-file-text fs-16 text-primary"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h4 class="mb-1 fw-semibold">{{ my_requests_count }}</h4>
+                                <p class="mb-0 text-muted">My Requests</p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary-transparent">{{ my_pending_requests }} pending</span>
                             </div>
                         </div>
                     </div>
                 </a>
             </div>
 
-            <!-- Total Requests -->
+            <!-- My Pending Requests -->
             <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <a href="{% url 'masters:request_submission_list' %}">
+                <a href="{% url 'masters:my_request_submission_list' %}?status=pending">
                     <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
+                        <div class="card-body d-flex align-items-center">
                             <div class="me-3">
                                 <span class="avatar avatar-lg bg-warning-transparent rounded-circle">
                                     <i class="fe fe-file-text fs-16 text-warning"></i>
                                 </span>
                             </div>
                             <div class="flex-grow-1">
-                                <h4 class="mb-1 fw-semibold">{{ total_requests }}</h4>
-                                <p class="mb-0 text-muted">Total Requests</p>
+                                <h4 class="mb-1 fw-semibold">{{ my_pending_requests_count }}</h4>
+                                <p class="mb-0 text-muted">My Pending Requests</p>
                             </div>
                             <div class="text-end">
-                                <span class="badge bg-warning-transparent">{{ pending_requests }} pending</span>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Approved Requests Card: Use director_approved_count for director -->
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <a href="{% url 'masters:request_submission_list' %}?status=approved">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="me-3">
-                                    <span class="avatar avatar-lg bg-success-transparent rounded-circle">
-                                        <i class="fe fe-check-circle fs-16 text-success"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h4 class="mb-1 fw-semibold">
-                                        {% if request.user.usertype == 'director' %}
-                                            {{ director_approved_count|default:0 }}
-                                        {% else %}
-                                            {{ approved_requests }}
-                                        {% endif %}
-                                    </h4>
-                                    <p class="mb-0 text-muted">Approved</p>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-success-transparent">{{ request_completion_rate }}% completion</span>
-                                </div>
+                                <span class="badge bg-warning-transparent">{{ my_pending_requests }} pending</span>
                             </div>
                         </div>
                     </div>
                 </a>
             </div>
 
-            <!-- Rejected Requests Card: Use director_rejected_count for director -->
+            <!-- My Approved Requests -->
             <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <a href="{% url 'masters:request_submission_list' %}?status=rejected">
+                <a href="{% url 'masters:my_request_submission_list' %}?status=approved">
                     <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="me-3">
-                                    <span class="avatar avatar-lg bg-danger-transparent rounded-circle">
-                                        <i class="fe fe-x-circle fs-16 text-danger"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h4 class="mb-1 fw-semibold">
-                                        {% if request.user.usertype == 'director' %}
-                                            {{ director_rejected_count|default:0 }}
-                                        {% else %}
-                                            {{ rejected_requests }}
-                                        {% endif %}
-                                    </h4>
-                                    <p class="mb-0 text-muted">Rejected</p>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-danger-transparent">{{ avg_processing_time }} days avg</span>
-                                </div>
+                        <div class="card-body d-flex align-items-center">
+                            <div class="me-3">
+                                <span class="avatar avatar-lg bg-success-transparent rounded-circle">
+                                    <i class="fe fe-file-text fs-16 text-success"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h4 class="mb-1 fw-semibold">{{ my_approved_requests_count }}</h4>
+                                <p class="mb-0 text-muted">My Approved Requests</p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-success-transparent">{{ my_approved_requests }} approved</span>
                             </div>
                         </div>
                     </div>
                 </a>
+            </div>
+
+            <!-- My Rejected Requests -->
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                <a href="{% url 'masters:my_request_submission_list' %}?status=rejected">
+                    <div class="card custom-card">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="me-3">
+                                <span class="avatar avatar-lg bg-danger-transparent rounded-circle">
+                                    <i class="fe fe-file-text fs-16 text-danger"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h4 class="mb-1 fw-semibold">{{ my_rejected_requests_count }}</h4>
+                                <p class="mb-0 text-muted">My Rejected Requests</p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-danger-transparent">{{ my_rejected_requests }} rejected</span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
         </div>
 
         <!-- Assigned Requests Table -->
@@ -172,6 +154,8 @@
                                         <td>
                                             {% if request.dashboard_status == 'processing' %}
                                                 <span class="badge bg-primary text-white">Processing</span>
+                                            {% elif request.status == 're_assign' %}
+                                                <span class="badge bg-dark bg-gradient text-white">Re Assigned</span>
                                             {% else %}
                                                 <span class="badge bg-warning text-white">Pending</span>
                                             {% endif %}

@@ -33,150 +33,141 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12">
-                              <form method="post" id="request-form" enctype="multipart/form-data" autocomplete="off">
-                                {% csrf_token %}
-                                {% if form.non_field_errors %}
-                                  <div class="alert alert-danger">
-                                    {{ form.non_field_errors }}
-                                  </div>
-                                {% endif %}
-                                <div class="row">
+                           <div class="col-12">
+                                <form method="post" id="request-form" enctype="multipart/form-data" autocomplete="off">
+                                    {% csrf_token %}
+                                    {% if form.non_field_errors %}
+                                    <div class="alert alert-danger">
+                                        {{ form.non_field_errors }}
+                                    </div>
+                                    {% endif %}
+
+                                    <div class="row">
                                     {% if not object %}
                                         <div class="mb-3 col-lg-4 col-sm-12 col-md-6">
-                                            {{ form.title|as_crispy_field }}
+                                        {{ form.title|as_crispy_field }}
                                         </div>
-                                        
+
                                         <div class="mb-3 col-lg-4 col-sm-12 col-md-6">
-                                            {{ form.description|as_crispy_field }}
+                                        {{ form.description|as_crispy_field }}
                                         </div>
-                                        
+
                                         <div class="mb-3 col-lg-4 col-sm-12 col-md-6">
-                                            {{ form.attachment|as_crispy_field }}
+                                        {{ form.attachment|as_crispy_field }}
                                         </div>
                                     {% endif %}
-                                </div>
+                                    </div>
 
-                                <!-- Add usertype flow selection for OE users during creation -->
-                                {% if request.user.usertype == "OE" and not object and available_flow_usertypes %}
-                                <div class="row">
-                                    <div class="mb-3 col-lg-8">
+                                    <!-- Add usertype flow selection for OE users during creation -->
+                                    {% if request.user.usertype == "OE" and not object and available_flow_usertypes %}
+                                    <div class="row">
+                                        <div class="mb-3 col-lg-8">
                                         <label class="form-label mb-2">Approval Flow</label>
                                         <div class="usertype-flow-minimal d-flex align-items-center flex-wrap mb-2" style="gap: 0.5rem;">
                                             <span class="usertype-pill fixed">Office Executive</span>
                                             <span class="usertype-arrow">&#8594;</span>
                                             {% for val in form.usertype_flow.value %}
-                                                <span class="usertype-pill usertype-middle position-relative" data-key="{{ val }}">
-                                                    {% for v, lbl in available_flow_usertypes %}
-                                                        {% if v == val %}{{ lbl }}{% endif %}
-                                                    {% endfor %}
-                                                    <button type="button" class="remove-middle-usertype" data-key="{{ val }}" title="Remove" tabindex="-1">&times;</button>
-                                                </span>
-                                                <span class="usertype-arrow">&#8594;</span>
+                                            <span class="usertype-pill usertype-middle position-relative" data-key="{{ val }}">
+                                                {% for v, lbl in available_flow_usertypes %}
+                                                {% if v == val %}{{ lbl }}{% endif %}
+                                                {% endfor %}
+                                                <button type="button" class="remove-middle-usertype" data-key="{{ val }}" title="Remove" tabindex="-1">&times;</button>
+                                            </span>
+                                            <span class="usertype-arrow">&#8594;</span>
                                             {% endfor %}
                                             <span class="usertype-pill fixed">Director</span>
                                         </div>
                                         <div class="input-group input-group-sm" style="max-width: 320px;">
                                             <select id="usertype-add-select" class="form-select" style="min-width: 140px;">
-                                                <option value="">Add usertype...</option>
-                                                {% for value, label in available_flow_usertypes %}
-                                                    {% if not form.usertype_flow.value or value not in form.usertype_flow.value %}
-                                                        <option value="{{ value }}">{{ label }}</option>
-                                                    {% endif %}
-                                                {% endfor %}
+                                            <option value="">Add usertype...</option>
+                                            {% for value, label in available_flow_usertypes %}
+                                                {% if not form.usertype_flow.value or value not in form.usertype_flow.value %}
+                                                <option value="{{ value }}">{{ label }}</option>
+                                                {% endif %}
+                                            {% endfor %}
                                             </select>
                                             <button type="button" id="add-usertype-btn" class="btn btn-outline-primary px-3">+ Add</button>
                                         </div>
                                         <input type="hidden" name="usertype_flow" id="usertype_flow_input" value="{{ form.usertype_flow.value|join:',' }}">
+                                        </div>
                                     </div>
-                                </div>
-                                {% endif %}
+                                    {% endif %}
 
-                                <div class="row">
+                                    <div class="row">
                                     {% if form.status %}
-                                    <div class="mb-3 col-lg-3 col-sm-12 col-md-6">
+                                        <div class="mb-3 col-lg-3 col-sm-12 col-md-6">
                                         {{ form.status|as_crispy_field }}
-                                    </div>
+                                        </div>
                                     {% endif %}
-                                    
+
                                     {% if form.remark %}
-                                    <div class="mb-3 col-lg-6 col-sm-12 col-md-6">
+                                        <div class="mb-3 col-lg-6 col-sm-12 col-md-6">
                                         {{ form.remark|as_crispy_field }}
+                                        </div>
+                                    {% endif %}
+
+                                    <!-- Share Request Field: Only OE after director approves/rejects -->
+                                    {% if form.share_request %}
+                                        <div class="mb-3 col-lg-3 col-sm-12 col-md-3">
+                                            {{ form.share_request|as_crispy_field }}
+                                        </div>
+
+                                        <div class="mb-3 col-lg-3 col-sm-12 col-md-3" id="share_request_usertype_wrapper" style="display:none;">
+                                            {{ form.request_shared_usertype|as_crispy_field }}
+                                        </div>
+                                    {% endif %}
                                     </div>
-                                    {% endif %}
-                                    
-                                    {% if request.user.usertype == "director" %}
-                                        <div class="col-lg-3 col-sm-12 col-md-6">
-                                            <label for="re_assign" class="form-label">Did you want to re-assign?</label>
-                                            <select class="form-select" id="re_assign" name="re_assign">
-                                                <option value="no" selected>No</option>
-                                                <option value="yes">Yes</option>
-                                            </select>
-                                        </div>
 
-                                        <div class="col-lg-3 col-sm-12 col-md-6" id="reassign_usertype_wrapper" style="display: none;">
-                                            <label for="reassign_usertype" class="form-label">Select Usertype</label>
-                                            <select class="form-select" id="reassign_usertype" name="reassign_usertype">
-                                                <option value="">-- Select --</option>
-                                                {% for key, label in reassign_usertype_choices %}
-                                                    <option value="{{ key }}">{{ label }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                    {% endif %}
-                                </div>
-
-                                <div class="row">
-                                     {% if form.alternative_description %}
+                                    <div class="row">
+                                    {% if form.alternative_description %}
                                         <div class="mb-3 col-lg-4">
-                                            {{ form.alternative_description|as_crispy_field }}
+                                        {{ form.alternative_description|as_crispy_field }}
                                         </div>
                                     {% endif %}
+
                                     {% if request.user.usertype == "OE" and not form.remark and object %}
-                                        <!-- Minimalistic Editable Flow UI: Only user-added usertypes + fixed Director at end -->
                                         <div class="mb-3 col-lg-8">
-                                            <label class="form-label mb-2">Usertype Flow</label>
-                                            <div class="usertype-flow-minimal d-flex align-items-center flex-wrap mb-2" style="gap: 0.5rem;">
-                                                {% for key in form.user_flow.value %}
-                                                    <span class="usertype-pill usertype-middle position-relative" data-key="{{ key }}">
-                                                        {% for val, lbl in usertype_choices %}
-                                                            {% if val == key %}{{ lbl }}{% endif %}
-                                                        {% endfor %}
-                                                        <button type="button" class="remove-middle-usertype" data-key="{{ key }}" title="Remove" tabindex="-1">&times;</button>
-                                                    </span>
+                                        <label class="form-label mb-2">Usertype Flow</label>
+                                        <div class="usertype-flow-minimal d-flex align-items-center flex-wrap mb-2" style="gap: 0.5rem;">
+                                            {% for key in form.user_flow.value %}
+                                            <span class="usertype-pill usertype-middle position-relative" data-key="{{ key }}">
+                                                {% for val, lbl in usertype_choices %}
+                                                {% if val == key %}{{ lbl }}{% endif %}
                                                 {% endfor %}
-                                                <span class="usertype-pill fixed">Director</span>
-                                            </div>
-                                            <div class="input-group input-group-sm" style="max-width: 320px;">
-                                                <select id="usertype-add-select" class="form-select" style="min-width: 140px;">
-                                                    <option value="">Add usertype...</option>
-                                                    {% for key, label in usertype_choices %}
-                                                        {% if key not in form.user_flow.value and key != "College" and key != "OE" and key != "director" %}
-                                                            <option value="{{ key }}">{{ label }}</option>
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                </select>
-                                                <button type="button" id="add-usertype-btn" class="btn btn-outline-primary px-3">+</button>
-                                            </div>
-                                            <!-- Hidden inputs for user-added usertypes only -->
-                                            <div id="user_flow_hidden_inputs">
-                                                {% for val in form.user_flow.value %}
-                                                    <input type="hidden" name="user_flow" value="{{ val }}">
-                                                {% endfor %}
-                                            </div>
+                                                <button type="button" class="remove-middle-usertype" data-key="{{ key }}" title="Remove" tabindex="-1">&times;</button>
+                                            </span>
+                                            {% endfor %}
+                                            <span class="usertype-pill fixed">Director</span>
+                                        </div>
+                                        <div class="input-group input-group-sm" style="max-width: 320px;">
+                                            <select id="usertype-add-select" class="form-select" style="min-width: 140px;">
+                                            <option value="">Add usertype...</option>
+                                            {% for key, label in usertype_choices %}
+                                                {% if key not in form.user_flow.value and key != "College" and key != "OE" and key != "director" %}
+                                                <option value="{{ key }}">{{ label }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                            </select>
+                                            <button type="button" id="add-usertype-btn" class="btn btn-outline-primary px-3">+</button>
+                                        </div>
+                                        <div id="user_flow_hidden_inputs">
+                                            {% for val in form.user_flow.value %}
+                                            <input type="hidden" name="user_flow" value="{{ val }}">
+                                            {% endfor %}
+                                        </div>
                                         </div>
                                     {% endif %}
-                                </div>
-                            
-                                <div class="card-footer">
+                                    </div>
+
+                                    <div class="card-footer">
                                     <div class="row">
                                         <div class="col d-flex justify-content-end">
-                                            <button type="submit" class="btn btn-success"><i class="fe fe-save"></i> Forward</button>
-                                            <button type="button" onclick="history.back()" class="btn btn-outline-info ms-2"> <i class="fa fa-cancel"></i> Cancel</button>
+                                        <button type="submit" class="btn btn-success"><i class="fe fe-save"></i> Forward</button>
+                                        <button type="button" onclick="history.back()" class="btn btn-outline-info ms-2"><i class="fa fa-cancel"></i> Cancel</button>
                                         </div>
                                     </div>
-                                </div>
-                            </form>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -453,6 +444,32 @@ document.addEventListener('DOMContentLoaded', function () {
                 usertypeWrapper.style.display = "none";
             }
         });
+    }
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Get the select element from the form
+    const shareRequestSelect = document.querySelector('select[name="share_request"]');
+    const usertypeWrapper = document.getElementById("share_request_usertype_wrapper");
+
+    // Hide it by default
+    usertypeWrapper.style.display = "none";
+
+    if (shareRequestSelect) {
+        shareRequestSelect.addEventListener("change", function () {
+            if (this.value.toLowerCase() === "yes") {
+                usertypeWrapper.style.display = "block";
+            } else {
+                usertypeWrapper.style.display = "none";
+            }
+        });
+
+        // Trigger on page load if value is already "yes"
+        if (shareRequestSelect.value.toLowerCase() === "yes") {
+            usertypeWrapper.style.display = "block";
+        }
     }
 });
 </script>

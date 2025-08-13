@@ -2,6 +2,7 @@ from django.db import models
 from tinymce.models import HTMLField
 from core.base import BaseModel
 from django.urls import reverse_lazy
+from django.db.models import Q
 from users.models import UserProfile
 from core.choices import USERTYPE_CHOICES, REQUEST_SUBMISSION_STATUS_CHOICES, CHOICES
 
@@ -42,12 +43,18 @@ class RequestSubmissionType(BaseModel):
 
 class RequestSubmission(BaseModel):
     request_id = models.CharField(max_length=128, unique=True, null=True)
-    college = models.ForeignKey("users.UserProfile", on_delete=models.PROTECT, related_name="college", limit_choices_to={'user__usertype': 'College'})
+    college = models.ForeignKey("users.UserProfile", related_name="college", on_delete=models.PROTECT,)
     title = models.ForeignKey("masters.RequestSubmissionType", on_delete=models.PROTECT, limit_choices_to={'is_active': True}, null=True)
     description = HTMLField(null=True)
-    alternative_description = HTMLField(null=True, blank=True)
+    alternative_description = HTMLField(null=True, blank=True,)
     attachment = models.FileField(upload_to="request_submissions/", blank=True, null=True)
     current_usertype = models.CharField(max_length=30, choices=USERTYPE_CHOICES, null=True)
+    request_shared_usertype = models.ManyToManyField(
+        "users.UserProfile",
+        limit_choices_to=~Q(user__usertype='College'),
+        related_name="shared_requests",
+        blank=True
+    )
     usertype_flow = models.JSONField(default=list, null=True)
     status = models.CharField(max_length=30, choices=REQUEST_SUBMISSION_STATUS_CHOICES, default="forwarded")
     created_by = models.ForeignKey("users.UserProfile", on_delete=models.SET_NULL, null=True, blank=True, related_name="created_submissions")
