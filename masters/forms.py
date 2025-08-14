@@ -43,7 +43,11 @@ class RequestStatusUpdateForm(forms.ModelForm):
         required=False,
         label="Did you want to share this request?"
     )
-    
+    alternative_description = forms.CharField(
+        widget=TinyMCE(attrs={"cols": 80, "rows": 15}),
+        required=True,
+        label="Request Summary"
+    )
     class Meta:
         model = RequestSubmission
         fields = [
