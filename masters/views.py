@@ -42,22 +42,18 @@ class RequestSubmissionListView(mixins.HybridListView):
         user = self.request.user
         qs = super().get_queryset()
 
-        # Superuser can see all
         if user.is_superuser:
             return qs
 
         try:
             user_profile = UserProfile.objects.get(user=user)
-            # Assuming usertype is on the User model
             usertype = user_profile.user.usertype
         except UserProfile.DoesNotExist:
             return qs.none()
 
-        # Check if this is an "assigned requests" view
         assigned_only = self.request.GET.get('assigned', '').lower() == 'true'
 
         if assigned_only:
-            # Get the latest status for each request
             latest_status_subquery = RequestSubmissionStatusHistory.objects.filter(
                 submission=OuterRef('pk')
             ).order_by('-date')
@@ -69,34 +65,27 @@ class RequestSubmissionListView(mixins.HybridListView):
                 is_active=True
             )
 
-            # Exclude requests created by this user (unless college user)
             if usertype != "College":
                 qs = qs.exclude(creator=user_profile.user)
 
-            # Additional status filter if provided
             status = self.request.GET.get("status", "").lower()
             if status in ["approved", "rejected", "pending", "processing"]:
                 qs = qs.filter(status=status)
 
             return qs.distinct()
 
-        # Original filtering logic for non-assigned views
         if usertype == "College":
-            # College users see their own requests
             qs = qs.filter(creator=user_profile.user)
             
-            # Status filter for college users
             status = self.request.GET.get("status", "").lower()
             if status in ["approved", "rejected", "pending"]:
                 qs = qs.filter(status=status)
         else:
-            # Other users see requests assigned to them or submitted by them
             qs = qs.filter(
                 Q(status_history__next_usertype=usertype) |
                 Q(status_history__submitted_users=user_profile)
             ).distinct().exclude(creator=user_profile.user)
 
-            # Status filter for non-college users
             status = self.request.GET.get("status", "").lower()
             if status in ["approved", "rejected"]:
                 oe_to_college_ids = RequestSubmissionStatusHistory.objects.filter(
@@ -133,7 +122,6 @@ class SharedRequestsListView(mixins.HybridListView):
         user = self.request.user
         user_profile = UserProfile.objects.get(user=user)
 
-        # Get requests shared with this user
         return RequestSubmission.objects.filter(
             request_shared_usertype__user=user,
         ).distinct()
@@ -166,7 +154,6 @@ class MyRequestSubmissionListView(mixins.HybridListView):
 
         qs = RequestSubmission.objects.filter(created_by=user_profile)
 
-        # Latest next usertype subquery
         latest_next_usertype = RequestSubmissionStatusHistory.objects.filter(
             submission=OuterRef('pk')
         ).order_by('-date').values('next_usertype')[:1]
@@ -189,7 +176,6 @@ class MyRequestSubmissionListView(mixins.HybridListView):
             Q(created_by=user_profile) | assigned_back_filter
         )
 
-        # ✅ Use Exists instead of join to avoid duplicates
         return qs.annotate(
             oe_assigned_to_creator=Exists(
                 RequestSubmissionStatusHistory.objects.filter(

@@ -186,6 +186,28 @@
                     </div>
                 </a>
             </div>
+
+            <!-- re assign Requests -->
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                <a href="{% url 'masters:request_submission_list' %}?status=re_assign">
+                    <div class="card custom-card">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="me-3">
+                                <span class="avatar avatar-lg bg-primary-transparent rounded-circle">
+                                    <i class="fe fe-file-text fs-16 text-primary"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h4 class="mb-1 fw-semibold">{{ re_assigned_requests_count }}</h4>
+                                <p class="mb-0 text-muted">Re Assigned Requests</p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary-transparent">{{ re_assigned_requests_count }} assigned</span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
         </div>
 
         <!-- Assigned Requests Table -->

@@ -13,6 +13,9 @@ class RequestSubmissionTable(BaseTable):
             
             {% elif record.status == "rejected" %}
                 <span class="badge bg-danger">Rejected</span>
+
+            {% elif record.status == "re_assign" %}
+                <span class="badge bg-dark bg-gradient">Re Assigned</span>
             
             {% elif request.user.usertype == "College" %}
                 <span class="badge bg-warning text-white">Pending</span>

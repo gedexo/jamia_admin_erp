@@ -316,7 +316,22 @@ class HomeView(mixins.HybridTemplateView):
                 req.is_created_by_user = (req.created_by_id == user_profile.id)
                 recent_assigned_requests.append(req)
 
+        re_assigned_requests_count = 0
+        if user_profile and not user.is_superuser:
+            director_reassign_qs = RequestSubmissionStatusHistory.objects.filter(
+                submission__current_usertype=usertype,
+                usertype="director",           
+                status="re_assign",             
+                next_usertype=usertype          
+            ).values_list("submission_id", flat=True)
+
+            re_assigned_requests_count = RequestSubmission.objects.filter(
+                id__in=director_reassign_qs,
+                is_active=True
+            ).exclude(created_by=user_profile).distinct().count()
+
         context['recent_assigned_requests'] = recent_assigned_requests
+        context["re_assigned_requests_count"] = re_assigned_requests_count
         pending_requests = filtered_requests.filter(status__in=['pending', 'processing'])
         context['pending_requests'] = pending_requests.count()
         context['recent_pending_requests'] = pending_requests.order_by('-created')[:5]
