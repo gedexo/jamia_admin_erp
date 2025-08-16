@@ -62,6 +62,11 @@ class RequestSubmission(BaseModel):
 
     def __str__(self):
         return f"{self.title}"
+    
+    class Meta:
+        ordering = ['-updated']
+        verbose_name = "Request Submission"
+        verbose_name_plural = "Request Submissions"
 
     def save(self, *args, **kwargs):
         if not self.request_id:

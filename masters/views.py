@@ -309,11 +309,9 @@ class RequestSubmissionCreateView(mixins.HybridCreateView):
                 required=False,
                 widget=MultipleHiddenInput()  
             )
-            # Alias for template
             form.fields['user_flow'] = form.fields['usertype_flow']
             allowed_fields.append('usertype_flow')
 
-        # Keep only allowed fields
         for field_name in list(form.fields):
             if field_name not in allowed_fields:
                 del form.fields[field_name]
@@ -321,7 +319,7 @@ class RequestSubmissionCreateView(mixins.HybridCreateView):
         return form
 
     def form_invalid(self, form):
-        print("FORM ERRORS:", form.errors)  # <-- DEBUGGING
+        print("FORM ERRORS:", form.errors) 
         return super().form_invalid(form)
 
     @transaction.atomic
@@ -331,7 +329,6 @@ class RequestSubmissionCreateView(mixins.HybridCreateView):
         form.instance.created_by = user_profile
 
         try:
-            # --- OE user creating request ---
             if user_profile.user.usertype == "OE":
                 selected_usertypes = [
                     ut for ut in self.request.POST.getlist('usertype_flow') if ut.strip()
@@ -339,22 +336,18 @@ class RequestSubmissionCreateView(mixins.HybridCreateView):
 
                 full_flow = ["OE"] + selected_usertypes + ["director"]
 
-                # If your model uses CharField, convert to JSON string
-                import json
-                form.instance.usertype_flow = full_flow  # or json.dumps(full_flow) if CharField
+                form.instance.usertype_flow = full_flow  
 
                 form.instance.status = "pending"
                 form.instance.current_usertype = selected_usertypes[0] if selected_usertypes else "director"
 
             else:
-                # Non-OE users
                 form.instance.usertype_flow = [user_profile.user.usertype, "OE"]
                 form.instance.status = "pending"
                 form.instance.current_usertype = "OE"
 
             response = super().form_valid(form)
 
-            # --- Status History ---
             RequestSubmissionStatusHistory.objects.create(
                 submission=form.instance,
                 user=user_profile,
@@ -364,7 +357,6 @@ class RequestSubmissionCreateView(mixins.HybridCreateView):
                 remark=f"{user_profile.user.usertype} created the request."
             )
 
-            # --- Notifications ---
             next_profiles = UserProfile.objects.filter(user__usertype=form.instance.current_usertype)
             for profile in next_profiles:
                 Notification.objects.create(
@@ -429,20 +421,15 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
         submission = form.instance
         current_usertype = user_profile.user.usertype
 
-        # --- Preserve existing flow ---
         flow_list = submission.usertype_flow or []
 
-        # --- If new submission or OE is creating/modifying the flow ---
         if not submission.pk or current_usertype == "OE":
-            # Start with the request creator's usertype
             creator_usertype = flow_list[0] if flow_list else current_usertype
             new_flow = [creator_usertype]
 
-            # OE is always next
             if "OE" not in new_flow:
                 new_flow.append("OE")
 
-            # Middle usertypes from POST (only added by OE)
             middle_usertypes = self.request.POST.getlist("user_flow") or []
             middle_usertypes = [
                 ut.strip() for ut in middle_usertypes
@@ -453,21 +440,18 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
                 if ut not in new_flow:
                     new_flow.append(ut)
 
-            # Director always last
             if "director" not in new_flow:
                 new_flow.append("director")
 
             submission.usertype_flow = new_flow
-            flow_list = new_flow  # update the flow for further logic
+            flow_list = new_flow  
 
-        # --- Save shared usertypes ---
         shared_usertype = form.cleaned_data.get("request_shared_usertype")
         if shared_usertype:
             submission.request_shared_usertype.set(shared_usertype)
         else:
             submission.request_shared_usertype.clear()
 
-        # --- Determine next usertype ---
         status = form.cleaned_data.get("status")
         reassign_to = form.cleaned_data.get("reassign_usertype")
         next_usertype = None
@@ -484,7 +468,7 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
         elif current_usertype == "OE":
             last_history = submission.status_history.order_by("-created").first()
             if last_history and last_history.usertype == "director" and last_history.status in ["approved", "rejected"]:
-                next_usertype = flow_list[0]  # assign to original request creator
+                next_usertype = flow_list[0]  
             else:
                 try:
                     idx = flow_list.index(current_usertype)
@@ -498,12 +482,10 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
             except ValueError:
                 next_usertype = None
 
-        # --- Save submission ---
         submission.current_usertype = next_usertype
         submission.updated_by = user_profile
         submission.save()
 
-        # --- Save history ---
         history_record = RequestSubmissionStatusHistory.objects.create(
             submission=submission,
             user=user_profile,
@@ -514,7 +496,6 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
         )
         history_record.submitted_users.add(user_profile)
 
-        # --- Send notifications ---
         if next_usertype:
             next_profiles = UserProfile.objects.filter(user__usertype=next_usertype)
             for profile in next_profiles:
@@ -524,7 +505,7 @@ class RequestStatusUpdateView(mixins.HybridUpdateView):
                     url=submission.get_absolute_url(),
                 )
 
-        return redirect(submission.get_absolute_url())
+        return redirect("core:home")
 
     def form_invalid(self, form):
         print("Form errors:", form.errors, file=sys.stdout)
