@@ -1,4 +1,5 @@
 import os
+from django.templatetags.static import static
 from core import mixins
 from django.db.models import Q, F, Subquery, OuterRef, Exists, TextField
 from django.db.models.functions import Cast
@@ -426,15 +427,8 @@ class HomeView(mixins.HybridTemplateView):
 
 @login_required
 def notification_list(request):
-    notifications = Notification.objects.filter(user=request.user, is_read=False, is_active=True).order_by('-created_at')
-    def get_avatar_url(user):
-        # Try to get user photo (student or employee), else fallback to default
-        if hasattr(user, 'student') and getattr(user.student, 'photo', None):
-            return user.student.photo.url
-        elif hasattr(user, 'employee') and getattr(user.employee, 'photo', None):
-            return user.employee.photo.url
-        # fallback to a static default avatar
-        from django.templatetags.static import static
+    notifications = Notification.objects.filter(user=request.user, is_read=False, is_active=True).order_by('-created_at')[:99]
+    def get_avatar_url():
         return static('app/assets/images/brand-logos/desktop-logo.png')
     data = [
         {
@@ -443,7 +437,7 @@ def notification_list(request):
             'url': n.url,
             'is_read': n.is_read,
             'timestamp': n.created_at.isoformat(),
-            'avatar_url': get_avatar_url(n.user),
+            'avatar_url': get_avatar_url(),
         } for n in notifications
     ]
     return JsonResponse({'notifications': data, 'count': notifications.count()})
@@ -462,3 +456,9 @@ def notification_mark_read(request, pk):
     notification.is_read = True
     notification.save()
     return JsonResponse({'success': True, 'url': notification.url})
+
+@login_required
+@require_POST
+def notification_clear_all(request):
+    Notification.objects.filter(user=request.user, is_read=False, is_active=True).update(is_read=True)
+    return JsonResponse({'success': True})

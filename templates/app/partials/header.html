@@ -106,15 +106,16 @@
                 <a class="header-link position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-bell"></i>
                     <span id="notification-count"
-                          class="badge bg-danger rounded-circle d-flex align-items-center justify-content-center position-absolute top-0 start-100 translate-middle"
-                          style="width: 22px; height: 22px; font-size: 13px; padding: 0;">
-                      0
+                        class="badge bg-danger rounded-circle d-flex align-items-center justify-content-center position-absolute top-0 start-100 translate-middle"
+                        style="width: 22px; height: 22px; font-size: 13px; padding: 0;">
+                    0
                     </span>
                 </a>
                 <div class="dropdown-menu dropdown-menu-end p-0 border-0 shadow" aria-labelledby="notificationDropdown"
-                     style="min-width: 340px; max-width: 380px; border-radius: 14px; overflow: hidden;">
-                    <div class="bg-light border-bottom px-3 py-2 fw-semibold" style="font-size: 1rem;">
+                    style="min-width: 340px; max-width: 380px; border-radius: 14px; overflow: hidden;">
+                    <div class="bg-light border-bottom px-3 py-2 fw-semibold d-flex justify-content-between align-items-center" style="font-size: 1rem;">
                         Notifications
+                        <button id="clear-all-btn" class="btn btn-sm btn-link text-danger p-0">Clear All</button>
                     </div>
                     <ul id="notification-list" class="list-unstyled mb-0" style="max-height: 350px; overflow-y: auto;">
                         <li class="text-center text-muted py-4" id="notification-empty">
@@ -278,6 +279,50 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('notificationDropdown').addEventListener('click', fetchNotifications);
     setInterval(fetchNotifications, 60000);
     fetchNotifications();
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    const clearAllBtn = document.getElementById("clear-all-btn");
+    const notificationList = document.getElementById("notification-list");
+    const notificationCount = document.getElementById("notification-count");
+    const emptyState = document.getElementById("notification-empty");
+
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener("click", function () {
+            fetch("/notifications/clear-all/", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                    "Content-Type": "application/json",
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    notificationList.innerHTML = "";
+                    notificationList.appendChild(emptyState);
+                    emptyState.style.display = "block";
+                    notificationCount.textContent = "0";
+                }
+            });
+        });
+    }
+
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.startsWith(name + "=")) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 });
 </script>
 <style>
